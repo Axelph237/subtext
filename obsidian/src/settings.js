@@ -99,7 +99,7 @@ export class SubTeXtSettingTab extends PluginSettingTab {
         button.setDisabled(true);
         result.setText('Converting...');
         result.toggleClass('mod-warning', false);
-        const outcome = await plugin.convert(sample);
+        const outcome = await plugin.convert({ input: sample, context: '' });
         result.setText(outcome.ok ? outcome.latex : `Error: ${outcome.error}`);
         result.toggleClass('mod-warning', !outcome.ok);
         button.setDisabled(false);

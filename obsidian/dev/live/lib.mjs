@@ -21,8 +21,8 @@ export async function reset(page, patch = {}) {
     window.stxFinished = 0;
     if (!plugin.convert.instrumented) {
       const convert = plugin.convert;
-      plugin.convert = async (input) => {
-        const result = await convert.call(plugin, input);
+      plugin.convert = async (conversion) => {
+        const result = await convert.call(plugin, conversion);
         window.stxFinished++;
         return result;
       };

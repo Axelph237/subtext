@@ -33,7 +33,7 @@ export async function detectClaudePath() {
   return path?.startsWith('/') && await isExecutable(path) ? path : '';
 }
 
-export async function runClaude(input, { model, claudePath, timeoutMs = TIMEOUT_MS }) {
+export async function runClaude(conversion, { model, claudePath, timeoutMs = TIMEOUT_MS }) {
   const command = claudePath || await detectClaudePath();
   if (!command) return { ok: false, error: MISSING };
   const backend = BACKENDS['claude-code'];
@@ -61,6 +61,6 @@ export async function runClaude(input, { model, claudePath, timeoutMs = TIMEOUT_
     });
     // A CLI that exits before reading stdin raises EPIPE here; its exit code and stderr already explain the failure.
     child.stdin.on('error', () => {});
-    child.stdin.end(backend.stdinFor(input));
+    child.stdin.end(backend.stdinFor(conversion));
   });
 }

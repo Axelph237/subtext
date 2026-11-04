@@ -71,7 +71,7 @@ async function test() {
   output.className = '';
   output.textContent = 'Converting...';
   await saving;
-  const result = await chrome.runtime.sendMessage({ tag: TAG, id: crypto.randomUUID(), method: 'convert', params: { input: $('test-input').value } });
+  const result = await chrome.runtime.sendMessage({ tag: TAG, id: crypto.randomUUID(), method: 'convert', params: { input: $('test-input').value, context: '' } });
   output.textContent = result.ok ? result.latex : `Error: ${result.error}`;
   output.className = result.ok ? '' : 'error';
   button.disabled = false;

@@ -1,12 +1,13 @@
 // Native messaging frames each message as a 4-byte little-endian length followed by UTF-8 JSON.
+import { MAX_CONTEXT_CHARS } from './core/subtext.mjs';
 import { runClaude } from './core/node/claude-cli.mjs';
 
 async function handle(message) {
-  const { input, model, claudePath } = message ?? {};
-  if (typeof input !== 'string' || !input.trim() || typeof model !== 'string' || !model) {
+  const { input, context, model, claudePath } = message ?? {};
+  if (typeof input !== 'string' || !input.trim() || typeof context !== 'string' || typeof model !== 'string' || !model) {
     return { ok: false, error: 'The SubTeXt native host received a malformed request.' };
   }
-  return runClaude(input, { model, claudePath: typeof claudePath === 'string' ? claudePath : '' });
+  return runClaude({ input, context: context.slice(-MAX_CONTEXT_CHARS) }, { model, claudePath: typeof claudePath === 'string' ? claudePath : '' });
 }
 
 function send(result) {

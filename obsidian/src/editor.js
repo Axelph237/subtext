@@ -60,7 +60,7 @@ async function convertTrigger(view, { delimiter, convert, notify }) {
   const id = nextId++;
   view.dispatch({ effects: addPending.of({ id, from, to, text: state.sliceDoc(from, to) }) });
 
-  const result = await convert(trigger.input);
+  const result = await convert({ input: trigger.input, context: '' });
   if (!view.dom.isConnected) return;
   const entry = findPending(view.state, id);
   if (!entry) return;

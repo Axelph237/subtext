@@ -88,7 +88,7 @@ window.SubTeXtPane = {
     await Zotero.SubTeXt.setApiKey(this.$('subtext-api-key').value.trim());
     button.disabled = true;
     output.textContent = 'Converting...';
-    const result = await Zotero.SubTeXt.convert(this.$('subtext-test-input').value);
+    const result = await Zotero.SubTeXt.convert({ input: this.$('subtext-test-input').value, context: '' });
     output.textContent = result.ok ? result.latex : `Error: ${result.error}`;
     output.style.color = result.ok ? '' : 'var(--accent-red, #d70022)';
     button.disabled = false;

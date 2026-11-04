@@ -8,6 +8,9 @@ export const MODELS = [
 
 export const DEFAULT_MODEL = 'claude-haiku-5-5';
 
+export const DEFAULT_CONTEXT_CHARS = 2000;
+export const MAX_CONTEXT_CHARS = 20000;
+
 export const SYSTEM_PROMPT = `You convert a short piece of math, written in plain language or sloppy notation, into LaTeX for the KaTeX renderer.
 
 Output only the LaTeX. No prose, no explanation, no code fences, and no math delimiters such as $, $$, \\( or \\[.
@@ -22,6 +25,8 @@ Fix the notation:
 - Write matrices with pmatrix (bmatrix if brackets were asked for) and piecewise functions with cases.
 
 Write only ASCII. Spell every symbol as a command, such as \\pi, \\le, \\ne, \\pm, or ^\\circ, never as a Unicode character like π or ≤, because pdflatex rejects those.
+
+A message may hold <context>, the document text just before the math, followed by <math>. Convert only the text in <math>. Use the context only to choose notation consistent with the document, such as \\mathbf{v} for a vector it writes in bold or a symbol it defined earlier. Never copy context into the output, and never use the context to solve, substitute values, or simplify.
 
 If the input is already valid LaTeX, return it unchanged. Use only commands KaTeX supports. Never output \\begin{equation}, \\begin{align}, or \\label.`;
 
@@ -38,6 +43,24 @@ export function findTrigger(textBeforeCursor, delimiter = DEFAULT_DELIMITER) {
   const input = textBeforeCursor.slice(start + delimiter.length, positions[last]).trim();
   if (!input) return null;
   return { start, end: textBeforeCursor.length, input };
+}
+
+export function contextWindow(textBefore, chars) {
+  if (!(chars > 0)) return '';
+  let text = textBefore.slice(-chars);
+  const cutMidWord = text.length < textBefore.length && /\S/.test(textBefore[textBefore.length - text.length - 1]);
+  if (cutMidWord) text = text.replace(/^\S+/, '');
+  return text.trim();
+}
+
+export function parseContextChars(value) {
+  const n = typeof value === 'number' ? value : typeof value === 'string' && value.trim() ? Number(value) : NaN;
+  return Number.isFinite(n) ? Math.min(MAX_CONTEXT_CHARS, Math.max(0, Math.round(n))) : DEFAULT_CONTEXT_CHARS;
+}
+
+// Without context the message stays the bare input, so requests and the eval baseline are unchanged.
+export function userMessage({ input, context }) {
+  return context ? `<context>\n${context}\n</context>\n\n<math>\n${input}\n</math>` : input;
 }
 
 export const FORMATS = {
@@ -88,8 +111,8 @@ export const BACKENDS = {
         '--system-prompt', SYSTEM_PROMPT,
       ];
     },
-    stdinFor(input) {
-      return input;
+    stdinFor(conversion) {
+      return userMessage(conversion);
     },
     parseOutput(stdout) {
       let json;
@@ -106,7 +129,7 @@ export const BACKENDS = {
   },
   anthropic: {
     label: 'Anthropic API key',
-    buildRequest({ model, apiKey }, input) {
+    buildRequest({ model, apiKey }, conversion) {
       return {
         url: 'https://api.anthropic.com/v1/messages',
         init: {
@@ -121,7 +144,7 @@ export const BACKENDS = {
             model,
             max_tokens: 1024,
             system: SYSTEM_PROMPT,
-            messages: [{ role: 'user', content: input }],
+            messages: [{ role: 'user', content: userMessage(conversion) }],
             output_config: { effort: 'low' },
           }),
         },

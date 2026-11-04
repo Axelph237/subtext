@@ -80,10 +80,10 @@ var SubTeXt = (() => {
   }
 
   const TRANSPORTS = {
-    async anthropic(backend, settings, input) {
+    async anthropic(backend, settings, conversion) {
       const apiKey = getApiKey();
       if (!apiKey) return { ok: false, error: 'No Anthropic API key is set. Add one in Settings > SubTeXt.' };
-      const { url, init } = backend.buildRequest({ model: settings.model, apiKey }, input);
+      const { url, init } = backend.buildRequest({ model: settings.model, apiKey }, conversion);
       let response;
       try {
         response = await fetch(url, init);
@@ -99,12 +99,12 @@ var SubTeXt = (() => {
       return backend.parseResponse(json);
     },
 
-    async 'claude-code'(backend, settings, input) {
+    async 'claude-code'(backend, settings, conversion) {
       const command = settings.claudePath || await detectClaudePath();
       if (!command) return { ok: false, error: 'Could not find the claude CLI. Set its path in Settings > SubTeXt.' };
       let output;
       try {
-        output = await run(command, backend.buildArgs({ model: settings.model }), backend.stdinFor(input));
+        output = await run(command, backend.buildArgs({ model: settings.model }), backend.stdinFor(conversion));
       } catch (e) {
         return { ok: false, error: `Could not run ${command}: ${e.message || e}` };
       }
@@ -115,9 +115,9 @@ var SubTeXt = (() => {
     },
   };
 
-  async function convert(input, settings = readSettings()) {
+  async function convert(conversion, settings = readSettings()) {
     try {
-      return await TRANSPORTS[settings.backend](BACKENDS[settings.backend], settings, input);
+      return await TRANSPORTS[settings.backend](BACKENDS[settings.backend], settings, conversion);
     } catch (e) {
       Zotero.logError(e);
       return { ok: false, error: String(e.message || e) };
@@ -246,7 +246,7 @@ var SubTeXt = (() => {
 
     const record = { win, view, text, from, pill: showPill(view, from) };
     pending.add(record);
-    const result = await convert(trigger.input, settings);
+    const result = await convert({ input: trigger.input, context: '' }, settings);
     if (!pending.has(record)) return;
     release(record);
     if (!result.ok) {

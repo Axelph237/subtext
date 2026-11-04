@@ -23,14 +23,14 @@ window.addEventListener('message', (event) => {
   callbacks.get(data.id)?.(data.result);
 });
 
-function convert(input) {
+function convert(conversion) {
   return new Promise((resolve) => {
     const done = (result) => {
       callbacks.delete(id);
       clearTimeout(timer);
       resolve(result);
     };
-    const id = send('convert', { input }, done);
+    const id = send('convert', conversion, done);
     const timer = setTimeout(() => done({ ok: false, error: 'No answer from the extension. Reload the page and try again.' }), ANSWER_TIMEOUT_MS);
   });
 }
@@ -122,7 +122,7 @@ function subtext(CodeMirror) {
       if (view.state.field(pending).some((entry) => entry.from < to && entry.to > from)) return;
       const id = nextId++;
       view.dispatch({ effects: addPending.of({ id, from, to }) });
-      const result = await convert(input);
+      const result = await convert({ input, context: '' });
       const entry = live && (view.state.field(pending, false) ?? []).find((e) => e.id === id);
       if (!entry) return;
       if (result?.ok) {

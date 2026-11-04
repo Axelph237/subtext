@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { findTrigger, cleanLatex, BACKENDS, FORMATS, SYSTEM_PROMPT, MODELS, DEFAULT_MODEL } from '../subtext.mjs';
+import {
+  findTrigger, cleanLatex, contextWindow, parseContextChars, userMessage, BACKENDS, FORMATS, SYSTEM_PROMPT, MODELS, DEFAULT_MODEL,
+  DEFAULT_CONTEXT_CHARS, MAX_CONTEXT_CHARS,
+} from '../subtext.mjs';
 
 test('findTrigger returns the trigger when the closing delimiter is at the cursor', () => {
   assert.deepEqual(findTrigger('%% x squared %%'), { start: 0, end: 15, input: 'x squared' });
@@ -69,10 +72,64 @@ test('the default model is the first and cheapest listed model', () => {
   assert.equal(MODELS[0].id, DEFAULT_MODEL);
 });
 
+test('contextWindow is empty when context is off', () => {
+  assert.equal(contextWindow('Let v be a vector.', 0), '');
+  assert.equal(contextWindow('Let v be a vector.', -5), '');
+});
+
+test('contextWindow returns short text whole, trimmed', () => {
+  assert.equal(contextWindow('\n  Let $v$ be a vector. ', 2000), 'Let $v$ be a vector.');
+});
+
+test('contextWindow keeps the last characters and drops a word the cut splits', () => {
+  assert.equal(contextWindow('alpha bravo charlie', 9), 'charlie');
+  assert.equal(contextWindow('alpha bravo charlie', 8), 'charlie');
+  assert.equal(contextWindow('alpha bravo charlie', 13), 'bravo charlie');
+});
+
+test('contextWindow never returns more than the window', () => {
+  const text = 'word '.repeat(1000);
+  assert.ok(contextWindow(text, 2000).length <= 2000);
+});
+
+test('parseContextChars accepts integers in range, as numbers or strings', () => {
+  assert.equal(parseContextChars(0), 0);
+  assert.equal(parseContextChars(500), 500);
+  assert.equal(parseContextChars('750'), 750);
+  assert.equal(parseContextChars(MAX_CONTEXT_CHARS), MAX_CONTEXT_CHARS);
+});
+
+test('parseContextChars clamps out-of-range values and rounds fractions', () => {
+  assert.equal(parseContextChars(-1), 0);
+  assert.equal(parseContextChars(MAX_CONTEXT_CHARS + 1), MAX_CONTEXT_CHARS);
+  assert.equal(parseContextChars('12.6'), 13);
+});
+
+test('parseContextChars falls back to the default for missing or garbage values', () => {
+  for (const value of [undefined, null, '', '  ', 'lots', NaN, Infinity, {}, [], true]) {
+    assert.equal(parseContextChars(value), DEFAULT_CONTEXT_CHARS, `for ${String(value)}`);
+  }
+});
+
+test('userMessage is the bare input without context', () => {
+  assert.equal(userMessage({ input: 'v dot w', context: '' }), 'v dot w');
+});
+
+test('userMessage wraps context and math in tags', () => {
+  assert.equal(userMessage({ input: 'v dot w', context: 'Let $\\mathbf{v}$ be a vector.' }),
+    '<context>\nLet $\\mathbf{v}$ be a vector.\n</context>\n\n<math>\nv dot w\n</math>');
+});
+
+test('the system prompt tells the model to convert only the math and not to solve from context', () => {
+  assert.match(SYSTEM_PROMPT, /<context>/);
+  assert.match(SYSTEM_PROMPT, /Convert only the text in <math>/);
+  assert.match(SYSTEM_PROMPT, /Never copy context into the output/);
+});
+
 const anthropic = BACKENDS.anthropic;
 
 test('anthropic buildRequest targets the Messages API with the key, model, prompt, and input', () => {
-  const { url, init } = anthropic.buildRequest({ model: 'claude-haiku-5-5', apiKey: 'sk-test' }, 'x squared');
+  const { url, init } = anthropic.buildRequest({ model: 'claude-haiku-5-5', apiKey: 'sk-test' }, { input: 'x squared', context: '' });
   assert.equal(url, 'https://api.anthropic.com/v1/messages');
   assert.equal(init.method, 'POST');
   assert.equal(init.headers['x-api-key'], 'sk-test');
@@ -85,6 +142,11 @@ test('anthropic buildRequest targets the Messages API with the key, model, promp
   assert.equal('thinking' in body, false, 'Sonnet 5.5 and Opus 5.5 reject disabled thinking');
   assert.deepEqual(body.output_config, { effort: 'low' });
   assert.equal('temperature' in body, false, 'API version 2026-10-21 rejects temperature');
+});
+
+test('anthropic buildRequest puts the context and the math in the user message', () => {
+  const { init } = anthropic.buildRequest({ model: 'claude-haiku-5-5', apiKey: 'sk-test' }, { input: 'v dot w', context: 'Let $v$ be a vector.' });
+  assert.deepEqual(JSON.parse(init.body).messages, [{ role: 'user', content: '<context>\nLet $v$ be a vector.\n</context>\n\n<math>\nv dot w\n</math>' }]);
 });
 
 test('anthropic parseResponse returns cleaned LaTeX from text blocks', () => {
@@ -124,8 +186,12 @@ test('claude-code buildArgs runs print mode with the model, no tools, no setting
   assert.equal(args.includes('--bare'), false, '--bare skips the keychain and breaks subscription login');
 });
 
-test('claude-code sends the input on stdin', () => {
-  assert.equal(claudeCode.stdinFor('x squared'), 'x squared');
+test('claude-code sends the bare input on stdin without context', () => {
+  assert.equal(claudeCode.stdinFor({ input: 'x squared', context: '' }), 'x squared');
+});
+
+test('claude-code sends the context and the math on stdin', () => {
+  assert.equal(claudeCode.stdinFor({ input: 'v dot w', context: 'Let $v$ be a vector.' }), '<context>\nLet $v$ be a vector.\n</context>\n\n<math>\nv dot w\n</math>');
 });
 
 test('claude-code parseOutput returns cleaned LaTeX from result', () => {
