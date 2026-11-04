@@ -94,7 +94,7 @@ runClaude(input, { model, claudePath }) -> Promise<Result>   // spawn with BACKE
 
 `core/quickmath.mjs` stays pure. The Anthropic request always sends `anthropic-dangerous-direct-browser-access: true`, because the API rejects requests that carry a browser `Origin` header without it. A Chrome extension service worker sends `Origin: chrome-extension://…`.
 
-The CM6 editors in both hosts share one behavior. A StateField holds the pending conversions as ranges and maps them through every transaction, so the replacement lands on the right text even if the user kept typing. A decoration marks each pending range. When a conversion finishes, the host replaces the mapped range in one transaction. If the range was deleted in the meantime, the result is dropped.
+The CM6 editors in both hosts share one behavior. A StateField holds the pending conversions as ranges and maps them through every transaction, so the replacement lands on the right text even if the user kept typing. A decoration marks each pending range. When a conversion finishes, the host replaces the mapped range in one transaction. If the range was deleted or edited inside in the meantime, the result is dropped, because writing it would overwrite the user's edit. The replacement carries `isolateHistory.of('full')`, so Cmd+Z undoes only the conversion and never the typing around it.
 
 ## Chrome extension (`chrome/`), Overleaf only
 
@@ -116,7 +116,15 @@ Manifest V3. Works in Chrome and Brave. Extension ID `aaconkaemhjabkkimpelnggapg
 
 ## Obsidian plugin (`obsidian/`)
 
-- Plain JS bundled with esbuild into `main.js` (core is ESM, Obsidian loads CommonJS). `obsidian`, `@codemirror/*`, and Node builtins are external.
-- The CM6 extension is registered with `registerEditorExtension`. The same StateField design as Overleaf applies.
-- `claude-code` uses `runClaude` (desktop only). `anthropic` uses Obsidian's `requestUrl`, which bypasses CORS. The API key lives in `app.secretStorage` (Obsidian 1.11.4+, so `minAppVersion: "1.11.4"`). `data.json` holds only the secret id.
+- Plain JS bundled with esbuild into `main.js` (core is ESM, Obsidian loads CommonJS). `obsidian`, `electron`, `@codemirror/*`, `@lezer/*`, and Node builtins are external.
+- The CM6 extension is registered with `registerEditorExtension`. The same StateField design as Overleaf applies. Each pending entry is a mark decoration whose spec holds its id and the trigger text. A result is also dropped when the text in the mapped range no longer equals the trigger text, because the user edited inside it. The replacing transaction carries `isolateHistory.of('full')`, so one Cmd+Z undoes the conversion and nothing typed around it.
+- `claude-code` uses `runClaude` (desktop only). `anthropic` uses Obsidian's `requestUrl` with `throw: false`, which bypasses CORS. The API key lives in `app.secretStorage` (Obsidian 1.11.4+, so `minAppVersion: "1.11.4"`). `data.json` holds only the secret id.
 - Default delimiter `;;`, because `%%` is Obsidian comment syntax. Output uses `FORMATS.markdown`.
+
+Obsidian facts (observed live on 1.13.4, macOS):
+
+- `/Applications/Obsidian.app` can ship an older `obsidian.asar` than the version that runs (1.10.6 here). The updater saves newer versions as `obsidian-<version>.asar` in the user data dir, and the loader runs the newest one there. `--user-data-dir` is honored, and the single-instance lock is per user data dir.
+- Restricted mode is per vault, in the vault's localStorage key `enable-plugin-<appId>`. A vault with plugins and no key shows a "Do you trust the author of this vault?" modal. Its accept button sets the key, loads the plugins listed in `community-plugins.json`, and opens Settings.
+- Settings opens in its own window by default (vault config `settingsPopoutWindow`). A `Notice` appears in `activeWindow`, which is that window while it has focus.
+- Obsidian UI components define `then()`. A promise callback that returns one (`p.then((x) => text.setPlaceholder(x))`) makes the promise adopt it forever and hangs the renderer.
+- `SecretComponent` shows **Link...**. It opens **Add secret** (id and value) when the keychain is empty and **Select secret** otherwise. `onChange` receives the secret id. Secrets are encrypted with Electron `safeStorage` and kept in the vault's localStorage.

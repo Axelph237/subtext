@@ -108,6 +108,49 @@ With the default delimiter, a trigger that is not converted is a LaTeX comment, 
 
 `chrome/dev/live/overleaf.mjs <profile-dir>` tries the extension on overleaf.com. Give it a folder of its own, not your Chrome or Brave profile. It opens a browser window and waits up to 5 minutes for you to sign in. Then it creates a project named `Quick Math scratch <time>`, converts an inline and a whole-line trigger in `main.tex`, and prints PASS or FAIL. At the end it moves that project to the trash and deletes it permanently. It finds the project by the ID it recorded when it created it, so it never touches your other projects. If Overleaf's dashboard has changed, fix the selectors at the top of the file.
 
+## Obsidian plugin
+
+Quick Math also works in Obsidian notes. In Obsidian the delimiter is `;;`, because `%%` starts an Obsidian comment:
+
+```
+;; alpha plus beta over gamma ;;
+```
+
+When you type the closing `;;`, the text becomes `$\frac{\alpha + \beta}{\gamma}$` in the note, and Obsidian renders it as math. The plugin needs Obsidian 1.11.4 or later on the desktop. It was tested live on Obsidian 1.13.4 on macOS.
+
+### Install
+
+1. Build the plugin with `obsidian/build.sh`. This creates `obsidian/build/quick-math/` with `main.js`, `manifest.json`, and `styles.css`.
+2. Copy the three files into `<vault>/.obsidian/plugins/quick-math/`. Create the folder if it does not exist.
+3. In Obsidian, open **Settings > Community plugins**. If Restricted mode is on, turn it off.
+4. Under **Installed plugins**, turn on **Quick Math**. Click the reload icon if it is not in the list.
+
+To update, copy the new files over the old ones and turn the plugin off and on again. To remove the plugin, turn it off and delete its folder. Pending conversions stop at once when you turn it off.
+
+### Configure
+
+Open **Settings > Quick Math**.
+
+| Setting | What it does | Default |
+| --- | --- | --- |
+| Convert with | **Claude Code login** runs the `claude` CLI. **Anthropic API key** calls the Anthropic API directly. | Claude Code login |
+| Model | Claude Haiku 5.5, Sonnet 5.5, or Opus 5.5. Select **Other model id** to type any model id. | Claude Haiku 5.5 |
+| Anthropic API key | Click **Link...** to pick or add a secret in Obsidian's keychain. The plugin saves only the secret's id in its `data.json`. | none |
+| Path to the claude CLI | The full path to `claude`. Leave it empty to find it automatically. The path it finds is shown in the empty field. | empty |
+| Delimiter | The text that opens and closes a trigger. Do not use `%%`. | `;;` |
+
+Click **Test** to convert the sample text with the current settings. The result or the error shows under the button.
+
+### Use
+
+- Type `;;`, the math, and `;;` anywhere in a note. The trigger text is highlighted while Claude works.
+- You can keep typing, in the same line or anywhere else. When the result comes back, Quick Math replaces the trigger where it is now.
+- If you delete or change the trigger text before the result comes back, the result is dropped.
+- If the trigger is alone on its line, it becomes a display math block between `$$` lines.
+- Press Cmd+Z (Ctrl+Z on Windows and Linux) to turn the math back into the text you typed.
+- If the conversion fails, the text stays as you typed it, and an Obsidian notice shows the error.
+- `%% comments %%` are never converted.
+
 ## Development
 
 - Run `node --test core/test/` to test the core: trigger detection, LaTeX cleanup, and each backend's request and response handling.
@@ -124,5 +167,11 @@ The `update_url` in `zotero/manifest.json` is a placeholder. Zotero requires the
 `zotero/dev/live/run.sh` starts a throwaway headless Zotero with its own profile and data directory. Your own library is never opened. It links the plugin from this checkout and runs `zotero/dev/live/scenarios/` in order. Each scenario opens a new note and types into it with real key events. The scenarios cover inline math through the real `claude` CLI, display math, undo, a failing CLI path, a custom delimiter, disable and enable, and the settings pane. It prints PASS or FAIL for each scenario and keeps screenshots in the work directory it names. Set `XPI=zotero/build/quick-math.xpi` to test the built plugin instead of the checkout. Set `ONLY="01-inline.js 03-undo.js"` to run some scenarios. A small driver plugin in `zotero/dev/live/driver` runs each scenario. It is only active when `QM_CMD_DIR` is set.
 
 The scenarios need a signed-in `claude` CLI. A full run costs well under one cent.
+
+### Obsidian live tests
+
+Run `npm install` in `obsidian`, then `node obsidian/dev/live/run.mjs`. It builds the plugin and starts a separate Obsidian with its own user data directory and a scratch vault, so your own Obsidian settings and vaults are never opened. The window opens behind the app you are using, so your typing does not reach it. The harness links the plugin into the scratch vault, accepts the "trust the author" prompt, and drives Obsidian with Playwright over the Chrome DevTools Protocol, typing with real key events. The scenarios in `obsidian/dev/live/scenarios/` cover inline and display math through the real `claude` CLI, typing and deleting while a conversion is pending, undo, `%%` comments, a custom delimiter, a failing CLI path, the settings tab, the Anthropic backend with a fake key, and disabling the plugin. It prints PASS or FAIL for each scenario and keeps screenshots in the work directory it names. Pass a directory to use it as the work directory. Set `ONLY="01 05"` to run some scenarios, and `PLUGIN_FILES=obsidian/build/quick-math` to test the built release folder.
+
+The Obsidian app bundle can be older than the version you run, because Obsidian updates itself by saving a newer app package in its user data directory. The harness downloads Obsidian 1.13.4's package from the Obsidian releases on GitHub, checks its SHA-256 digest, and caches it in `$QM_CACHE` (default: a folder in your temp directory). Set `OBSIDIAN_VERSION` to test another version.
 
 The design is in `DESIGN.md`.

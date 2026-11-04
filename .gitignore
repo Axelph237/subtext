@@ -4,3 +4,5 @@ zotero/build/
 .DS_Store
 .claude/
 chrome/build/
+obsidian/main.js
+obsidian/build/

@@ -1,0 +1,13 @@
+{
+  "name": "quick-math-obsidian",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "obsidian": "1.11.4",
+    "playwright-core": "1.64.1"
+  }
+}
