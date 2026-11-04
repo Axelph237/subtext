@@ -3,3 +3,5 @@ node_modules/
 zotero/build/
 .DS_Store
 .claude/
+obsidian/main.js
+obsidian/build/
