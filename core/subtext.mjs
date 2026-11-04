@@ -11,11 +11,39 @@ export const DEFAULT_MODEL = 'claude-haiku-5-5';
 export const DEFAULT_CONTEXT_CHARS = 2000;
 export const MAX_CONTEXT_CHARS = 20000;
 
-export const SYSTEM_PROMPT = `You convert a short piece of math, written in plain language or sloppy notation, into LaTeX for the KaTeX renderer.
+// The model answers with this token, and nothing else, when it cannot produce LaTeX.
+export const CANNOT_CONVERT_TOKEN = 'SUBTEXT_CANNOT_CONVERT';
+export const CANNOT_CONVERT = 'The model could not tell what math you meant. Your text is unchanged.';
+// An operation's answer is the model's work, this marker, then the equation. Only the equation is kept.
+export const RESULT_MARKER = 'SUBTEXT_RESULT';
 
-Output only the LaTeX. No prose, no explanation, no code fences, and no math delimiters such as $, $$, \\( or \\[.
+export const SYSTEM_PROMPT = `You turn a short note into LaTeX for the KaTeX renderer. A message is either the note alone, or <context> (the document text just before the note) followed by the note in <math>. The note is one of three things.
 
-Keep the meaning exactly. Do not solve, simplify, evaluate, expand, or reorder the math. Write what was said, in LaTeX.
+1. Math, in plain language or sloppy notation. Convert it and keep its meaning exactly. Do not solve, simplify, evaluate, expand, or reorder it. Write what was said, in LaTeX. If it is already valid LaTeX, return it unchanged.
+
+2. An operation on an equation, such as "x to both sides", "subtract 3 from both sides", "reduce sides by x", "divide by a", "drop x on right", "square both sides", or "simp left cross terms". Find the equation it means in <context>, usually the most recent one. Answer in two parts. First your work, as "kind: <add, subtract, multiply, divide, power, erase, or none>; step: <the whole equation with the step written into it>; simplify: <no, or the note's simplify word and what it covers>". "Drop", "remove", and "delete" are kind erase, never subtract. Then ${RESULT_MARKER}, then the final equation: the step equation itself when simplify is no, or that equation with only the asked part simplified. Only the part after ${RESULT_MARKER} is kept. Operations are the only case where you change the math:
+- A step that names a side ("on right", "left side", "right-hand side") applies to that side only. Leave the other side exactly as it was, even when the equation is then no longer true. A step that names no side, or says "both sides", "sides", or "through", applies to both sides.
+- Leave every term in place: nothing cancels and no arithmetic is done.
+- "Drop", "remove", or "delete" a term erases it from the side named, or from both sides when none is named. Erase the term that is there, with its sign, and write nothing in its place: v - u with u dropped is v, and y = mx + b with "remove b" gives y = mx.
+- Simplify only when the note asks, with a word such as "simplify", "simp", "simpl", "combine like terms", "collect terms", or "and reduce" anywhere in it, as in "reduce sides by x, simp". The request may name a side ("simp left"), a kind of term ("cross terms", "like terms", "constants", "the fractions"), or both. Combine and do arithmetic only on what it names, and copy everything else character for character. Cross terms are mixed products such as ab and ba, or 2xy.
+- Never solve for a variable unless the note asks.
+For example, with the equation in <context>:
+- 3y = 5 and "reduce sides by y": kind: subtract; step: 3y - y = 5 - y; simplify: no ${RESULT_MARKER} 3y - y = 5 - y
+- 3y = 5 and "reduce sides by y, simp": kind: subtract; step: 3y - y = 5 - y; simplify: "simp", all ${RESULT_MARKER} 2y = 5 - y
+- 2u - u = 9 and "u to both sides": kind: add; step: 2u - u + u = 9 + u; simplify: no ${RESULT_MARKER} 2u - u + u = 9 + u
+- y + 5 = z and "minus 5 both sides": kind: subtract; step: y + 5 - 5 = z - 5; simplify: no ${RESULT_MARKER} y + 5 - 5 = z - 5
+- 4t = s and "divide by 4": kind: divide; step: \\frac{4t}{4} = \\frac{s}{4}; simplify: no ${RESULT_MARKER} \\frac{4t}{4} = \\frac{s}{4}
+- p = q + k and "reduce right side by k": kind: subtract; step: p = q + k - k; simplify: no ${RESULT_MARKER} p = q + k - k
+- u + 2u = v - u and "drop u on right": kind: erase; step: u + 2u = v; simplify: no ${RESULT_MARKER} u + 2u = v
+- w = 2r + s and "remove the s": kind: erase; step: w = 2r; simplify: no ${RESULT_MARKER} w = 2r
+- p^2 + pq + qp = 3 + 4 and "simp left cross terms": kind: none; step: p^2 + pq + qp = 3 + 4; simplify: "simp", left cross terms ${RESULT_MARKER} p^2 + 2pq = 3 + 4
+- t + 1 + 2 = 2t + t and "simp right": kind: none; step: t + 1 + 2 = 2t + t; simplify: "simp", right ${RESULT_MARKER} t + 1 + 2 = 3t
+
+3. Anything else: words that are neither math nor an operation, or an operation when there is no <context> with an equation it applies to. Output exactly ${CANNOT_CONVERT_TOKEN} and nothing else. Never answer in prose.
+
+Use <context> to choose notation consistent with the document, such as \\mathbf{v} for a vector it writes in bold or a symbol it defined earlier. Never copy context text into the output, and never use the context to substitute values, solve, or simplify, except for the one equation an operation changes.
+
+Output only the LaTeX, the token, or an operation's two parts. No prose, no explanation, no code fences, and no math delimiters such as $, $$, \\( or \\[.
 
 Fix the notation:
 - Put multi-character exponents and subscripts in braces: x^10 becomes x^{10}, a_ij becomes a_{ij}.
@@ -26,9 +54,7 @@ Fix the notation:
 
 Write only ASCII. Spell every symbol as a command, such as \\pi, \\le, \\ne, \\pm, or ^\\circ, never as a Unicode character like π or ≤, because pdflatex rejects those.
 
-A message may hold <context>, the document text just before the math, followed by <math>. Convert only the text in <math>. Use the context only to choose notation consistent with the document, such as \\mathbf{v} for a vector it writes in bold or a symbol it defined earlier. Never copy context into the output, and never use the context to solve, substitute values, or simplify.
-
-If the input is already valid LaTeX, return it unchanged. Use only commands KaTeX supports. Never output \\begin{equation}, \\begin{align}, or \\label.`;
+Use only commands KaTeX supports. Never output \\begin{equation}, \\begin{align}, or \\label.`;
 
 export function findTrigger(textBeforeCursor, delimiter = DEFAULT_DELIMITER) {
   // Pair delimiters left to right, so a leftover unconverted pair earlier in the
@@ -88,9 +114,23 @@ export function cleanLatex(raw) {
   return latex;
 }
 
+function afterResultMarker(text) {
+  const at = text.lastIndexOf(RESULT_MARKER);
+  return at === -1 ? text : text.slice(at + RESULT_MARKER.length);
+}
+
+// Asked for the token, the model still answers some non-math notes in prose, which must never land in a
+// document as math. Five plain words in a row, outside commands and \text{}, do not occur in LaTeX math.
+function looksLikeProse(latex) {
+  const bare = latex.replace(/\\(?:text|mathrm|operatorname|textbf|textit|mbox)\{[^}]*\}/g, ' ').replace(/\\[a-zA-Z]+/g, ' ');
+  return /[A-Za-z]{2,}(?:[\s,.;:'"!?()-]+[A-Za-z]{2,}){4,}/.test(bare);
+}
+
 function latexResult(text) {
-  const latex = cleanLatex(text);
-  return latex ? { ok: true, latex } : { ok: false, error: 'The model returned no LaTeX.' };
+  if (text.includes(CANNOT_CONVERT_TOKEN)) return { ok: false, error: CANNOT_CONVERT };
+  const latex = cleanLatex(afterResultMarker(cleanLatex(text)));
+  if (!latex) return { ok: false, error: 'The model returned no LaTeX.' };
+  return looksLikeProse(latex) ? { ok: false, error: CANNOT_CONVERT } : { ok: true, latex };
 }
 
 const REFUSAL = 'The model declined to convert this input.';

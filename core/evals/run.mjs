@@ -3,10 +3,13 @@
 import { spawn } from 'node:child_process';
 import { homedir, tmpdir } from 'node:os';
 import katex from 'katex';
-import { BACKENDS, DEFAULT_CONTEXT_CHARS, DEFAULT_MODEL, contextWindow } from '../subtext.mjs';
+import { BACKENDS, CANNOT_CONVERT, DEFAULT_CONTEXT_CHARS, DEFAULT_MODEL, contextWindow } from '../subtext.mjs';
 
 const CLAUDE = process.argv[2] || `${homedir()}/.local/bin/claude`;
 const MODEL = process.env.STX_MODEL || DEFAULT_MODEL;
+// STX_REPEAT=10 runs each case ten times to measure a flaky case's pass rate. STX_ONLY=<regex> picks cases by input.
+const REPEAT = Number(process.env.STX_REPEAT) || 1;
+const ONLY = process.env.STX_ONLY ? new RegExp(process.env.STX_ONLY) : null;
 const backend = BACKENDS['claude-code'];
 
 // Document text before a trigger, cut to the default window, so one case has the realistic size and cost.
@@ -15,6 +18,8 @@ Let $\\mathbf{X} \\in \\mathbb{R}^{n \\times p}$ be the design matrix with full 
 
 // `must` and `mustNot` check that meaning survives and the model did not solve the math.
 // A `context` case checks that the document text before the trigger picks the notation and is not copied or used to solve.
+// An operation case writes one step into the equation in its context, unsimplified unless the input asks; its `must` is anchored to the whole output.
+// An `expectError` case passes only on the CANNOT_CONVERT error, from the token or from a prose answer.
 // Patterns ignore spaces, so `x^{10}` also matches `x^{ 10 }`.
 const CASES = [
   { input: 'integral from 0 to infinity of e to the minus x squared', must: [/\\int_\{?0\}?\^\{?\\infty\}?/, /e\^\{-x\^\{?2\}?\}/, /dx/], mustNot: [/\\sqrt\{?\\pi/] },
@@ -43,6 +48,22 @@ const CASES = [
   { context: 'Fix $x = 3$ and $y = 4$, as in the example of Section 2.', input: 'x squared plus y squared', must: [/x\^\{?2\}?\+y\^\{?2\}?/], mustNot: [/25/, /3\^/, /9/, /Section/] },
   { context: "By Plancherel's theorem the Fourier transform $\\hat{f}(\\xi) = \\int f(x) e^{-2\\pi i x \\xi}\\,dx$ preserves the $L^2$ norm.", input: 'norm of f equals norm of f hat', must: [/\\hat\{?f\}?/], mustNot: [/\\int/, /Plancherel/, /e\^\{-2/] },
   { context: PAPER, input: 'beta hat equals X transpose X inverse X transpose y', must: [/\\hat\{\\boldsymbol\{\\beta\}\}|\\boldsymbol\{\\hat\{\\beta\}\}|\\hat\{\\beta\}/, /\\mathbf\{X\}\^\{?(\\top|T)\}?/, /\\mathbf\{y\}/, /\^\{-1\}/], mustNot: [/\\varepsilon/, /\\sigma/] },
+  { context: 'Then $2x + 3 = 11$.', input: 'subtract 3 from both sides', must: [/^2x\+3-3=11-3$/], mustNot: [/2x=8/] },
+  { context: 'Then $2x + 3 = 11$.', input: 'subtract 3 from both sides and simplify', must: [/^2x=8$/], mustNot: [/x=4/] },
+  { context: '$3x = 7$', input: 'reduce sides by x', must: [/^3x-x=7-x$/] },
+  { context: '$3x = 7$', input: 'reduce sides by x, simp', must: [/^2x=7-x$/] },
+  { context: '$ax = c - b$', input: 'divide both sides by a', must: [/^\\frac\{ax\}\{a\}=\\frac\{c-b\}\{a\}$/], mustNot: [/^x=\\frac/] },
+  { context: '$y = mx + b + c$', input: 'reduce right side by c', must: [/^y=mx\+b\+c-c$/] },
+  { context: '$ax + b = c$', input: 'minus b both sides', must: [/^ax\+b-b=c-b$/] },
+  { context: '$3x - x = 7$', input: 'x to both sides', must: [/^3x-x\+x=7\+x$/] },
+  { context: 'Halving gives $\\frac{x}{2} = 5$.', input: 'multiply through by 2', must: [/^(\\frac\{x\}\{2\}(\\cdot|\\times)2|2(\\cdot|\\times)?\\frac\{x\}\{2\})=(5(\\cdot|\\times)2|2(\\cdot|\\times)5)$/] },
+  { context: 'so $\\sqrt{x} = y + 1$.', input: 'square both sides', must: [/^(\\left)?\(\\sqrt\{x\}(\\right)?\)\^\{?2\}?=(\\left)?\(y\+1(\\right)?\)\^\{?2\}?$/] },
+  { context: '$3x - x = 7 - x$', input: 'drop x on right', must: [/^3x-x=7$/], mustNot: [/2x/] },
+  { context: '$a^2 + ab + ba + b^2 = c + 2c$', input: 'simp left cross terms', must: [/^a\^\{?2\}?\+2ab\+b\^\{?2\}?=c\+2c$/], mustNot: [/3c/] },
+  { context: '$x^2 + 2x + x + 5 = 4 + 6$', input: 'simp right', must: [/^x\^\{?2\}?\+2x\+x\+5=10$/], mustNot: [/3x/] },
+  { context: '$y = mx + b$', input: 'remove the b on the right', must: [/^y=mx$/] },
+  { input: 'x to both sides', expectError: true },
+  { input: "what's the weather tomorrow", expectError: true },
 ];
 
 function runCli(conversion) {
@@ -80,12 +101,17 @@ async function runCase(c) {
   const result = backend.parseOutput(stdout);
   let cost = 0;
   try { cost = JSON.parse(stdout).total_cost_usd || 0; } catch {}
-  if (!result.ok) return { c, latex: '', problems: [result.error], cost };
+  if (c.expectError) {
+    const problems = result.ok || result.error !== CANNOT_CONVERT ? [`expected the cannot-convert error, got ${JSON.stringify(result)}`] : [];
+    return { c, latex: result.ok ? result.latex : `error: ${result.error}`, problems, cost };
+  }
+  if (!result.ok) return { c, latex: `error: ${result.error}`, problems: [result.error], cost };
   return { c, latex: result.latex, problems: judge(c, result.latex), cost };
 }
 
+const picked = CASES.filter((c) => !ONLY || ONLY.test(c.input));
 const results = [];
-const queue = [...CASES];
+const queue = picked.flatMap((c) => Array(REPEAT).fill(c));
 await Promise.all(Array.from({ length: 4 }, async () => {
   while (queue.length) results.push(await runCase(queue.shift()));
 }));
@@ -101,6 +127,13 @@ for (const r of results) {
 }
 const failed = results.filter((r) => r.problems.length);
 for (const r of failed) console.log(`\nFAIL ${r.c.input}\n  ${r.problems.join('\n  ')}`);
+if (REPEAT > 1) {
+  console.log('\n| passed | context | input |\n| --- | --- | --- |');
+  for (const c of picked) {
+    const runs = results.filter((r) => r.c === c);
+    console.log(`| ${runs.filter((r) => !r.problems.length).length}/${runs.length} | ${cell(contextCell(c.context))} | ${cell(c.input)} |`);
+  }
+}
 const cost = results.reduce((sum, r) => sum + r.cost, 0);
 console.log(`\n${results.length - failed.length}/${results.length} passed, total cost $${cost.toFixed(4)}`);
 process.exit(failed.length ? 1 : 0);
