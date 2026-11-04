@@ -1,0 +1,11 @@
+{
+  "name": "quickmath-prompt-check",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node run.mjs"
+  },
+  "devDependencies": {
+    "katex": "^0.19.1"
+  }
+}

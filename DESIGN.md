@@ -8,7 +8,7 @@ Type `%% plain-language or sloppy math %%` and the text turns into rendered LaTe
 core/                 platform-agnostic, pure, no I/O, ES module
   quickmath.mjs
   test/               node --test
-  eval/               live prompt eval (spends real tokens, run by hand)
+  evals/              live prompt eval (spends real tokens, run by hand)
 zotero/               Zotero 7+ bootstrapped plugin
   manifest.json bootstrap.js prefs.js prefs.xhtml src/
   core -> ../core     symlink, so the proxy-installed dev plugin and the xpi both contain core
