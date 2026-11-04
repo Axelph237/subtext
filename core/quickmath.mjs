@@ -38,6 +38,11 @@ export function findTrigger(textBeforeCursor, delimiter = DEFAULT_DELIMITER) {
   return { start, end: textBeforeCursor.length, input };
 }
 
+export const FORMATS = {
+  latex: { inline: (l) => `$${l}$`, display: (l) => `\\[\n${l}\n\\]` },
+  markdown: { inline: (l) => `$${l}$`, display: (l) => `$$\n${l}\n$$` },
+};
+
 const WRAPPERS = [
   ['$$', '$$'],
   ['\\[', '\\]'],
@@ -108,6 +113,7 @@ export const BACKENDS = {
             'x-api-key': apiKey,
             'anthropic-version': '2026-10-21',
             'content-type': 'application/json',
+            'anthropic-dangerous-direct-browser-access': 'true',
           },
           body: JSON.stringify({
             model,

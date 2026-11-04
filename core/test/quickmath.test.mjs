@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { findTrigger, cleanLatex, BACKENDS, SYSTEM_PROMPT, MODELS, DEFAULT_MODEL } from '../quickmath.mjs';
+import { findTrigger, cleanLatex, BACKENDS, FORMATS, SYSTEM_PROMPT, MODELS, DEFAULT_MODEL } from '../quickmath.mjs';
 
 test('findTrigger returns the trigger when the closing delimiter is at the cursor', () => {
   assert.deepEqual(findTrigger('%% x squared %%'), { start: 0, end: 15, input: 'x squared' });
@@ -57,6 +57,13 @@ test('cleanLatex leaves bare LaTeX unchanged', () => {
   assert.equal(cleanLatex('\\int_0^\\infty e^{-x^2}\\,dx'), '\\int_0^\\infty e^{-x^2}\\,dx');
 });
 
+test('FORMATS wraps LaTeX in each host syntax', () => {
+  assert.equal(FORMATS.latex.inline('x^{2}'), '$x^{2}$');
+  assert.equal(FORMATS.latex.display('x^{2}'), '\\[\nx^{2}\n\\]');
+  assert.equal(FORMATS.markdown.inline('x^{2}'), '$x^{2}$');
+  assert.equal(FORMATS.markdown.display('x^{2}'), '$$\nx^{2}\n$$');
+});
+
 test('the default model is the first and cheapest listed model', () => {
   assert.equal(DEFAULT_MODEL, 'claude-haiku-5-5');
   assert.equal(MODELS[0].id, DEFAULT_MODEL);
@@ -70,6 +77,7 @@ test('anthropic buildRequest targets the Messages API with the key, model, promp
   assert.equal(init.method, 'POST');
   assert.equal(init.headers['x-api-key'], 'sk-test');
   assert.equal(init.headers['anthropic-version'], '2026-10-21');
+  assert.equal(init.headers['anthropic-dangerous-direct-browser-access'], 'true', 'the API rejects requests with a browser Origin without it');
   const body = JSON.parse(init.body);
   assert.equal(body.model, 'claude-haiku-5-5');
   assert.equal(body.system, SYSTEM_PROMPT);
