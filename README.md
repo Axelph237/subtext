@@ -1,0 +1,67 @@
+# Quick Math
+
+Quick Math turns plain-language math into rendered LaTeX. In a Zotero note, type the math between two `%%` delimiters:
+
+```
+%% integral from 0 to infinity of e to the minus x squared %%
+```
+
+When you type the closing `%%`, the text is sent to Claude. A moment later it becomes a math node that shows ∫₀^∞ e^(-x²) dx, stored as `\int_0^\infty e^{-x^2}\,dx`. Sloppy LaTeX works too. `x^10` becomes `x^{10}`, and `sum i=1 to n` becomes `\sum_{i=1}^{n}`. Quick Math writes down what you typed. It does not solve or simplify it.
+
+Quick Math can use your Claude Code login or an Anthropic API key. The default model is Claude Haiku 5.5, the cheapest. One conversion costs about $0.0002 and takes one to two seconds.
+
+Zotero is the first host app. The conversion logic lives in `core/`, which has no Zotero code, so other apps can reuse it later.
+
+Quick Math was built against Zotero 10.0.7 and tested live on it. The manifest allows Zotero 7 to 10, but Zotero 7 to 9 are untested.
+
+## Install
+
+1. Build the plugin with `zotero/build.sh`. This creates `zotero/build/quick-math.xpi`.
+2. In Zotero, open **Tools > Plugins**.
+3. Drag `zotero/build/quick-math.xpi` onto the Plugins window. You can also click the gear icon, select **Install Plugin From File...**, and choose the file.
+
+To update, install a newer `.xpi` the same way. To remove the plugin, disable or remove it in **Tools > Plugins**. Listeners and pending conversions are removed at once. Removing the plugin also clears its preferences and its saved API key.
+
+## Configure
+
+Open **Zotero > Settings** (**Edit > Settings** on Windows and Linux) and select **Quick Math**.
+
+| Setting | What it does | Default |
+| --- | --- | --- |
+| Convert with | **Claude Code login** runs the `claude` CLI. **Anthropic API key** calls the Anthropic API directly. | Claude Code login |
+| Model | Claude Haiku 5.5, Sonnet 5.5, or Opus 5.5. Select **Other model id** to type any model id. | Claude Haiku 5.5 |
+| Anthropic API key | Your key for the Anthropic API. It is stored in the Zotero password manager, not in `prefs.js`. | none |
+| Path to the claude CLI | The full path to `claude`. Leave it empty to find it automatically. | empty |
+| Delimiter | The text that opens and closes a trigger. | `%%` |
+
+To use your Claude Code login, install Claude Code and sign in once in a terminal with `claude`. Zotero does not see your shell's `PATH`, so Quick Math looks for `claude` in `~/.local/bin`, `/opt/homebrew/bin`, and `/usr/local/bin`, then asks your login shell. The path it finds is shown in the empty path field.
+
+Click **Test** to convert the sample text with the current settings. The pane shows the LaTeX or the error.
+
+## Use
+
+- Type `%%`, the math, and `%%` anywhere in a note. A small "Converting to LaTeX" pill appears under the text while Claude works.
+- You can keep typing. When the result comes back, Quick Math replaces the trigger text where it is now.
+- If the trigger is the whole paragraph, it becomes display math, centered on its own line. The cursor moves to a new line below it.
+- Press Cmd+Z (Ctrl+Z on Windows and Linux) to turn the math back into the text you typed.
+- If the conversion fails, the text stays as you typed it, and a Zotero notification shows the error.
+- Read-only notes are skipped.
+
+## Development
+
+- Run `node --test core/test/` to test the core: trigger detection, LaTeX cleanup, and each backend's request and response handling.
+- Run `npm install` in `core/evals`, then `node core/evals/run.mjs` to check `SYSTEM_PROMPT` against 17 realistic inputs. It spends real tokens through your `claude` login, about $0.005 for a run. Each output must parse with KaTeX and keep the meaning of the input. Pass a path to use a different `claude`, and set `QM_MODEL` to try another model.
+- Run `zotero/build.sh` to build `zotero/build/quick-math.xpi`.
+- `zotero/core` is a symlink to `core/`, so the plugin loads `chrome://quickmath/content/core/quickmath.mjs` both from a checkout and from the `.xpi`.
+- To add a backend, add an entry to `BACKENDS` in `core/quickmath.mjs` and a transport with the same id to `TRANSPORTS` in `zotero/src/quickmath.js`. The settings pane builds its choices from `BACKENDS`. Give the backend's settings group `data-backend="<id>"` in `zotero/prefs.xhtml`.
+- In Zotero, `Zotero.QuickMath.convert(text)` runs one conversion with the current settings and resolves to `{ ok, latex }` or `{ ok, error }`. Use it from the Run JavaScript window (**Tools > Developer > Run JavaScript**).
+
+The `update_url` in `zotero/manifest.json` is a placeholder. Zotero requires the field. Replace it with a real update manifest URL before you publish the plugin.
+
+### Live tests
+
+`zotero/dev/live/run.sh` starts a throwaway headless Zotero with its own profile and data directory. Your own library is never opened. It links the plugin from this checkout and runs `zotero/dev/live/scenarios/` in order. Each scenario opens a new note and types into it with real key events. The scenarios cover inline math through the real `claude` CLI, display math, undo, a failing CLI path, a custom delimiter, disable and enable, and the settings pane. It prints PASS or FAIL for each scenario and keeps screenshots in the work directory it names. Set `XPI=zotero/build/quick-math.xpi` to test the built plugin instead of the checkout. Set `ONLY="01-inline.js 03-undo.js"` to run some scenarios. A small driver plugin in `zotero/dev/live/driver` runs each scenario. It is only active when `QM_CMD_DIR` is set.
+
+The scenarios need a signed-in `claude` CLI. A full run costs well under one cent.
+
+The design is in `DESIGN.md`.
