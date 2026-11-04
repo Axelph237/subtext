@@ -54,6 +54,8 @@ const CASES = [
   { context: '$3x = 7$', input: 'reduce sides by x, simp', must: [/^2x=7-x$/] },
   { context: '$ax = c - b$', input: 'divide both sides by a', must: [/^\\frac\{ax\}\{a\}=\\frac\{c-b\}\{a\}$/], mustNot: [/^x=\\frac/] },
   { context: '$y = mx + b + c$', input: 'reduce right side by c', must: [/^y=mx\+b\+c-c$/] },
+  { context: '\\[\nx - 5 = y\n\\]', input: 'reduce right by 5', must: [/^x-5=y-5$/] },
+  { context: '$x - 5 = y$', input: 'add 5 to the left', must: [/^x-5\+5=y$/] },
   { context: '$ax + b = c$', input: 'minus b both sides', must: [/^ax\+b-b=c-b$/] },
   { context: '$3x - x = 7$', input: 'x to both sides', must: [/^3x-x\+x=7\+x$/] },
   { context: 'Halving gives $\\frac{x}{2} = 5$.', input: 'multiply through by 2', must: [/^(\\frac\{x\}\{2\}(\\cdot|\\times)2|2(\\cdot|\\times)?\\frac\{x\}\{2\})=(5(\\cdot|\\times)2|2(\\cdot|\\times)5)$/] },
