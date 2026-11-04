@@ -1,7 +1,7 @@
 // Spends real tokens: each case is one claude CLI call on Haiku (about $0.0002).
 // Usage: node core/evals/run.mjs [path/to/claude]
 import { spawn } from 'node:child_process';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import katex from 'katex';
 import { BACKENDS, DEFAULT_CONTEXT_CHARS, DEFAULT_MODEL, contextWindow } from '../subtext.mjs';
 
@@ -47,7 +47,8 @@ const CASES = [
 
 function runCli(conversion) {
   return new Promise((resolve, reject) => {
-    const child = spawn(CLAUDE, backend.buildArgs({ model: MODEL }), { stdio: ['pipe', 'pipe', 'pipe'] });
+    // The hosts run claude from a temp dir. Run from this checkout, it sees the repo and answers differently.
+    const child = spawn(CLAUDE, backend.buildArgs({ model: MODEL }), { cwd: tmpdir(), stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '';
     child.stdout.on('data', (chunk) => { stdout += chunk; });
     child.on('error', reject);
