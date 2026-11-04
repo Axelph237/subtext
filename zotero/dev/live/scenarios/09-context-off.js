@@ -1,0 +1,11 @@
+resetPrefs();
+const stub = await stubClaude();
+setPref('claudePath', stub.path);
+setPref('contextChars', 0);
+const { view, iwin } = await openNote('<p>Let <span class="math">$\\mathbf{v}$</span> be a vector. Then</p>');
+await typeText(iwin, ' %% v dot w %%');
+check(await until(() => nodesOfType(view, 'math_inline').length === 2, 10000), 'the stub result becomes a second math_inline node', docJSON(view));
+const stdin = await stub.stdin();
+check(stdin === 'v dot w', 'contextChars 0 sends the bare input', stdin);
+resetPrefs();
+return { fails, stdin };

@@ -1,5 +1,5 @@
 import { PluginSettingTab, SecretComponent, Setting } from 'obsidian';
-import { BACKENDS, DEFAULT_BACKEND, DEFAULT_MODEL, MODELS } from '../../core/subtext.mjs';
+import { BACKENDS, DEFAULT_BACKEND, DEFAULT_CONTEXT_CHARS, DEFAULT_MODEL, MAX_CONTEXT_CHARS, MODELS, parseContextChars } from '../../core/subtext.mjs';
 import { detectClaudePath } from '../../core/node/claude-cli.mjs';
 
 // %% opens and closes an Obsidian comment, so the core default would never reach the plugin.
@@ -15,6 +15,7 @@ export function parseSettings(data) {
     model: text(data?.model) || DEFAULT_MODEL,
     claudePath: text(data?.claudePath),
     delimiter: text(data?.delimiter) || DEFAULT_DELIMITER,
+    contextChars: parseContextChars(data?.contextChars),
     apiKeySecret: text(data?.apiKeySecret),
   };
 }
@@ -90,6 +91,15 @@ export class SubTeXtSettingTab extends PluginSettingTab {
       .addText((text) => text.setPlaceholder(DEFAULT_DELIMITER).setValue(settings.delimiter)
         .onChange((value) => plugin.updateSettings({ delimiter: value })));
 
+    new Setting(containerEl)
+      .setName('Context')
+      .setDesc('Characters of the note before the trigger to send, so the model can match your notation. 0 sends only the math.')
+      .addText((text) => {
+        Object.assign(text.inputEl, { type: 'number', min: 0, max: MAX_CONTEXT_CHARS });
+        text.setPlaceholder(String(DEFAULT_CONTEXT_CHARS)).setValue(String(settings.contextChars))
+          .onChange((value) => plugin.updateSettings({ contextChars: value }));
+      });
+
     let sample = SAMPLE;
     const test = new Setting(containerEl)
       .setName('Test')
@@ -99,7 +109,7 @@ export class SubTeXtSettingTab extends PluginSettingTab {
         button.setDisabled(true);
         result.setText('Converting...');
         result.toggleClass('mod-warning', false);
-        const outcome = await plugin.convert(sample);
+        const outcome = await plugin.convert({ input: sample, context: '' });
         result.setText(outcome.ok ? outcome.latex : `Error: ${outcome.error}`);
         result.toggleClass('mod-warning', !outcome.ok);
         button.setDisabled(false);

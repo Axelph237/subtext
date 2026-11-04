@@ -6,7 +6,18 @@ const wait = (ms) => Zotero.Promise.delay(ms);
 async function until(fn, ms = 5000) { const end = Date.now() + ms; while (Date.now() < end) { if (await fn()) return true; await wait(100); } return false; }
 const PREF = 'extensions.subtext.';
 const setPref = (name, value) => Zotero.Prefs.set(PREF + name, value, true);
-const resetPrefs = () => { for (const n of ['backend', 'model', 'claudePath', 'delimiter']) Zotero.Prefs.clear(PREF + n, true); };
+const resetPrefs = () => { for (const n of ['backend', 'model', 'claudePath', 'delimiter', 'contextChars']) Zotero.Prefs.clear(PREF + n, true); };
+
+// Stands in for the claude CLI and records the message it receives.
+async function stubClaude() {
+  const work = PathUtils.parent(Services.env.get('STX_CMD_DIR'));
+  const path = PathUtils.join(work, 'stub-claude');
+  const stdinPath = PathUtils.join(work, 'stub-stdin.txt');
+  await IOUtils.writeUTF8(stdinPath, '');
+  await IOUtils.writeUTF8(path, `#!/bin/sh\ncat > '${stdinPath}'\nprintf '%s' '{"type":"result","is_error":false,"stop_reason":"end_turn","result":"x"}'\n`);
+  await IOUtils.setPermissions(path, 0o755);
+  return { path, stdin: () => IOUtils.readUTF8(stdinPath) };
+}
 
 const editorInstance = (itemID) => Zotero.Notes._editorInstances.find((e) => e.itemID === itemID && e.viewMode === 'tab');
 const iframeWindow = (itemID) => editorInstance(itemID)._iframeWindow;

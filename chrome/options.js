@@ -1,4 +1,4 @@
-import { BACKENDS, DEFAULT_DELIMITER, DEFAULT_MODEL, MODELS } from './core/subtext.mjs';
+import { BACKENDS, DEFAULT_CONTEXT_CHARS, DEFAULT_DELIMITER, DEFAULT_MODEL, MAX_CONTEXT_CHARS, MODELS } from './core/subtext.mjs';
 import { TAG } from './protocol.js';
 import { loadSettings } from './settings.js';
 
@@ -64,6 +64,11 @@ function initDelimiter(current) {
   hint();
 }
 
+function initContextChars(current) {
+  Object.assign($('context-chars'), { max: MAX_CONTEXT_CHARS, placeholder: DEFAULT_CONTEXT_CHARS });
+  initText('context-chars', 'contextChars', String(current));
+}
+
 async function test() {
   const button = $('test');
   const output = $('test-result');
@@ -71,7 +76,7 @@ async function test() {
   output.className = '';
   output.textContent = 'Converting...';
   await saving;
-  const result = await chrome.runtime.sendMessage({ tag: TAG, id: crypto.randomUUID(), method: 'convert', params: { input: $('test-input').value } });
+  const result = await chrome.runtime.sendMessage({ tag: TAG, id: crypto.randomUUID(), method: 'convert', params: { input: $('test-input').value, context: '' } });
   output.textContent = result.ok ? result.latex : `Error: ${result.error}`;
   output.className = result.ok ? '' : 'error';
   button.disabled = false;
@@ -83,4 +88,5 @@ initModel(settings.model);
 initText('api-key', 'apiKey', settings.apiKey);
 initText('claude-path', 'claudePath', settings.claudePath);
 initDelimiter(settings.delimiter);
+initContextChars(settings.contextChars);
 $('test').addEventListener('click', test);

@@ -1,7 +1,7 @@
 import { isolateHistory } from '@codemirror/commands';
 import { StateEffect, StateField } from '@codemirror/state';
 import { Decoration, EditorView } from '@codemirror/view';
-import { FORMATS, findTrigger } from '../../core/subtext.mjs';
+import { FORMATS, contextWindow, findTrigger } from '../../core/subtext.mjs';
 
 // Each pending conversion is one mark decoration whose spec carries { id, text }.
 // Mapping the set through every change keeps each range on its trigger text while the user types.
@@ -47,7 +47,7 @@ function replacement(state, entry, latex) {
 
 let nextId = 1;
 
-async function convertTrigger(view, { delimiter, convert, notify }) {
+async function convertTrigger(view, { delimiter, contextChars, convert, notify }) {
   const { state } = view;
   if (state.selection.ranges.length > 1 || !state.selection.main.empty) return;
   const head = state.selection.main.head;
@@ -60,7 +60,10 @@ async function convertTrigger(view, { delimiter, convert, notify }) {
   const id = nextId++;
   view.dispatch({ effects: addPending.of({ id, from, to, text: state.sliceDoc(from, to) }) });
 
-  const result = await convert(trigger.input);
+  const chars = contextChars();
+  // One extra character lets contextWindow see whether its cut splits a word.
+  const context = contextWindow(state.sliceDoc(Math.max(0, from - chars - 1), from), chars);
+  const result = await convert({ input: trigger.input, context });
   if (!view.dom.isConnected) return;
   const entry = findPending(view.state, id);
   if (!entry) return;

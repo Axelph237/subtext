@@ -32,6 +32,13 @@ export default async ({ page, vault, check, snap, until, wait, setTheme }) => {
   await delimiter.fill('');
   check(await saved('delimiter', ';;'), 'an empty delimiter saves the default', await data());
 
+  const context = row('Context').locator('input');
+  check(await context.inputValue() === '2000' && await context.getAttribute('type') === 'number', 'the context field is a number showing 2000', await context.inputValue());
+  await context.fill('300');
+  check(await saved('contextChars', 300), 'a context size is saved as a number', await data());
+  await context.fill('');
+  check(await saved('contextChars', 2000), 'an empty context size saves the default', await data());
+
   await row('Test').locator('button').click();
   check(await until(async () => /\\int/.test(await result()), 30000), 'Test converts through the claude CLI', await result());
   await snap('09-test-result');
@@ -71,7 +78,7 @@ export default async ({ page, vault, check, snap, until, wait, setTheme }) => {
   await page.keyboard.press('Escape');
   await page.evaluate(async () => { await app.plugins.disablePlugin('subtext'); await app.plugins.enablePlugin('subtext'); });
   const reloaded = await page.evaluate(() => app.plugins.plugins['subtext'].settings);
-  check(JSON.stringify(reloaded) === JSON.stringify({ backend: 'anthropic', model: 'claude-haiku-5-5', claudePath: detected, delimiter: ';;', apiKeySecret: KEY_ID }),
+  check(JSON.stringify(reloaded) === JSON.stringify({ backend: 'anthropic', model: 'claude-haiku-5-5', claudePath: detected, delimiter: ';;', contextChars: 2000, apiKeySecret: KEY_ID }),
     'a reloaded plugin reads every saved field', reloaded);
   await open();
   check(await row('Convert with').locator('select:not(.is-measuring)').inputValue() === 'anthropic', 'the reopened tab shows the saved backend');

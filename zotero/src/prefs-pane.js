@@ -13,6 +13,7 @@ window.SubTeXtPane = {
     this.initApiKey();
     this.initClaudePath();
     this.initDelimiter(core);
+    this.initContextChars(core);
     this.$('subtext-test').addEventListener('command', () => this.test());
   },
 
@@ -82,13 +83,21 @@ window.SubTeXtPane = {
     hint();
   },
 
+  // Set from here rather than bound with preference=, so the int pref only ever gets a parsed number.
+  initContextChars({ DEFAULT_CONTEXT_CHARS, MAX_CONTEXT_CHARS, parseContextChars }) {
+    const input = this.$('subtext-context-chars');
+    Object.assign(input, { max: MAX_CONTEXT_CHARS, placeholder: DEFAULT_CONTEXT_CHARS });
+    input.value = parseContextChars(Zotero.Prefs.get(this.PREF + 'contextChars', true));
+    input.addEventListener('input', () => Zotero.Prefs.set(this.PREF + 'contextChars', parseContextChars(input.value), true));
+  },
+
   async test() {
     const button = this.$('subtext-test');
     const output = this.$('subtext-test-result');
     await Zotero.SubTeXt.setApiKey(this.$('subtext-api-key').value.trim());
     button.disabled = true;
     output.textContent = 'Converting...';
-    const result = await Zotero.SubTeXt.convert(this.$('subtext-test-input').value);
+    const result = await Zotero.SubTeXt.convert({ input: this.$('subtext-test-input').value, context: '' });
     output.textContent = result.ok ? result.latex : `Error: ${result.error}`;
     output.style.color = result.ok ? '' : 'var(--accent-red, #d70022)';
     button.disabled = false;

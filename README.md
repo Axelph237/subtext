@@ -10,7 +10,7 @@ Type math in plain words between two delimiters. When you type the closing delim
 
 That becomes `\int_0^\infty e^{-x^2}\,dx`.
 
-SubTeXt works in Zotero, Overleaf (in Brave or Chrome), and Obsidian. It calls Claude through your Claude Code login or an Anthropic API key. The default model is Claude Haiku 5.5, at about $0.0002 per conversion.
+SubTeXt works in Zotero, Overleaf (in Brave or Chrome), and Obsidian. It calls Claude through your Claude Code login or an Anthropic API key. The default model is Claude Haiku 5.5, at about $0.0002 per conversion, or $0.0003 with the default 2,000 characters of context.
 
 ## Contents
 
@@ -31,11 +31,13 @@ SubTeXt works in Zotero, Overleaf (in Brave or Chrome), and Obsidian. It calls C
 ## Features
 
 - Plain words and sloppy LaTeX both work. `x^10` becomes `x^{10}`, and `sum i=1 to n` becomes `\sum_{i=1}^{n}`.
-- SubTeXt writes down what you typed. It does not solve or simplify the math.
+- SubTeXt writes down what you typed. It does not solve or simplify the math unless you ask.
+- SubTeXt also sends the model the text just before the trigger, so the LaTeX matches your notation, such as bold vectors or symbols you defined earlier. Set how many characters to send, or 0 to send only the math.
+- A trigger can also be a step on the equation before it. After `3x = 7`, `%% reduce sides by x %%` writes `3x - x = 7 - x`. SubTeXt simplifies only when you ask, so `%% reduce sides by x, simp %%` writes `2x = 7 - x`. You can name a side, as in `drop x on right`, or limit the simplifying, as in `simp left cross terms`.
 - A trigger inside a line becomes inline math. A trigger on its own line becomes display math.
 - You can keep typing while a conversion runs. If you edit the trigger first, SubTeXt drops the result.
 - Cmd+Z (Ctrl+Z on Windows and Linux) undoes the conversion.
-- If a conversion fails, your text stays as typed and SubTeXt shows the error.
+- If a conversion fails, your text stays as typed and SubTeXt shows the error. When the model cannot tell what math you meant, the error says so.
 
 ### Features in Zotero
 
@@ -103,6 +105,7 @@ Every platform has the same settings and a **Test** button that runs one convers
 | Anthropic API key | none |
 | Path to the `claude` CLI | found automatically |
 | Delimiter | `%%`, or `;;` in Obsidian |
+| Context: characters of text before the trigger to send, 0 for none | 2000 |
 
 ### Configure Zotero
 

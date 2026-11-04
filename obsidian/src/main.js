@@ -5,14 +5,14 @@ import { subtextExtension } from './editor.js';
 import { SubTeXtSettingTab, parseSettings } from './settings.js';
 
 const TRANSPORTS = {
-  'claude-code'(backend, settings, input) {
-    return runClaude(input, { model: settings.model, claudePath: settings.claudePath });
+  'claude-code'(backend, settings, conversion) {
+    return runClaude(conversion, { model: settings.model, claudePath: settings.claudePath });
   },
 
-  async anthropic(backend, settings, input, app) {
+  async anthropic(backend, settings, conversion, app) {
     const apiKey = settings.apiKeySecret && app.secretStorage.getSecret(settings.apiKeySecret);
     if (!apiKey) return { ok: false, error: 'No Anthropic API key is set. Choose one in Settings > SubTeXt.' };
-    const { url, init } = backend.buildRequest({ model: settings.model, apiKey }, input);
+    const { url, init } = backend.buildRequest({ model: settings.model, apiKey }, conversion);
     let response;
     try {
       response = await requestUrl({ url, method: init.method, headers: init.headers, body: init.body, throw: false });
@@ -35,7 +35,8 @@ export default class SubTeXtPlugin extends Plugin {
     this.addSettingTab(new SubTeXtSettingTab(this.app, this));
     this.registerEditorExtension(subtextExtension({
       delimiter: () => this.settings.delimiter,
-      convert: (input) => this.convert(input),
+      contextChars: () => this.settings.contextChars,
+      convert: (conversion) => this.convert(conversion),
       notify: (error) => new Notice(`SubTeXt could not convert: ${error}`, 8000),
     }));
   }
@@ -45,10 +46,10 @@ export default class SubTeXtPlugin extends Plugin {
     await this.saveData(this.settings);
   }
 
-  async convert(input) {
+  async convert(conversion) {
     const { settings } = this;
     try {
-      return await TRANSPORTS[settings.backend](BACKENDS[settings.backend], settings, input, this.app);
+      return await TRANSPORTS[settings.backend](BACKENDS[settings.backend], settings, conversion, this.app);
     } catch (e) {
       console.error('SubTeXt:', e);
       return { ok: false, error: String(e.message || e) };
