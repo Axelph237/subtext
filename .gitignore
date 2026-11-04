@@ -1,1 +1,4 @@
 todo.md
+node_modules/
+zotero/build/
+.DS_Store
