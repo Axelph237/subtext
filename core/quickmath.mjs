@@ -17,9 +17,11 @@ Keep the meaning exactly. Do not solve, simplify, evaluate, expand, or reorder t
 Fix the notation:
 - Put multi-character exponents and subscripts in braces: x^10 becomes x^{10}, a_ij becomes a_{ij}.
 - Write Greek letter names as commands: alpha becomes \\alpha, capital Sigma becomes \\Sigma.
-- Use \\frac, \\sqrt, \\sum, \\prod, \\int, \\lim, \\infty, \\cdot, \\le, \\ge, \\ne, \\to, and named functions such as \\sin, \\log, \\exp.
+- Use \\frac, \\binom (not \\choose), \\sqrt, \\sum, \\prod, \\int, \\lim, \\infty, \\cdot, \\le, \\ge, \\ne, \\to, and named functions such as \\sin, \\log, \\exp.
 - Give a definite or indefinite integral its differential, as in \\int_0^1 f(x)\\,dx.
 - Write matrices with pmatrix (bmatrix if brackets were asked for) and piecewise functions with cases.
+
+Write only ASCII. Spell every symbol as a command, such as \\pi, \\le, \\ne, \\pm, or ^\\circ, never as a Unicode character like π or ≤, because pdflatex rejects those.
 
 If the input is already valid LaTeX, return it unchanged. Use only commands KaTeX supports. Never output \\begin{equation}, \\begin{align}, or \\label.`;
 

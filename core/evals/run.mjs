@@ -29,6 +29,10 @@ const CASES = [
   { input: 'theta hat sub MLE', must: [/\\hat\{\\theta\}_\{(\\(text|mathrm)\{)?MLE/] },
   { input: 'norm of x minus y is at most epsilon', must: [/(\\\||\\lVert)/, /\\leq?/, /\\(var)?epsilon/] },
   { input: 'e^(i pi) + 1 = 0', must: [/e\^\{i\\pi\}\+1=0/] },
+  { input: 'area equals pi r squared', must: [/\\pi/, /r\^\{?2\}?/] },
+  { input: 'x ≤ y and y ≠ z', must: [/\\leq?/, /\\neq?/] },
+  { input: 'angle ABC is 90 degrees', must: [/\\angle/, /90/] },
+  { input: 'mu sub x plus or minus sigma', must: [/\\mu_\{?x\}?/, /\\pm/, /\\sigma/] },
 ];
 
 function runCli(input) {
@@ -49,6 +53,9 @@ function judge(c, latex) {
   } catch (e) {
     problems.push(`KaTeX: ${e.message.split('\n')[0]}`);
   }
+  // pdflatex, Overleaf's default compiler, fails on Unicode math characters such as π or ≤.
+  const unicode = latex.match(/[^\x00-\x7f]/g);
+  if (unicode) problems.push(`non-ASCII ${[...new Set(unicode)].join(' ')}`);
   const squashed = latex.replace(/\s+/g, '');
   if (c.exact !== undefined && latex !== c.exact) problems.push('changed already-correct LaTeX');
   for (const re of c.must || []) if (!re.test(squashed)) problems.push(`missing ${re}`);
