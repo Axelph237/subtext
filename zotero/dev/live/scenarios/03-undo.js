@@ -1,0 +1,12 @@
+resetPrefs();
+const { view, iwin } = await openNote('<p>Energy:</p>');
+const trigger = '%% e equals m c squared %%';
+await typeText(iwin, ' ' + trigger);
+check(await until(() => nodesOfType(view, 'math_inline').length === 1, 30000), 'trigger converts before undo', docJSON(view));
+const converted = await snap('03-before-undo');
+await pressAccel(iwin, 'z');
+check(nodesOfType(view, 'math_inline').length === 0, 'Cmd+Z removes the math node', docJSON(view));
+check(docText(view) === 'Energy: ' + trigger, 'Cmd+Z restores the raw trigger text', docText(view));
+await wait(2000);
+check(nodesOfType(view, 'math_inline').length === 0, 'restored text does not convert again by itself', docJSON(view));
+return { fails, text: docText(view), converted, undone: await snap('03-undone') };

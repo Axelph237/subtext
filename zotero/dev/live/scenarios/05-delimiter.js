@@ -1,0 +1,10 @@
+resetPrefs();
+setPref('delimiter', ';;');
+const { view, iwin } = await openNote('<p>Custom:</p>');
+await typeText(iwin, ' %% ignored %% and ;; x^10 ;;');
+check(await until(() => nodesOfType(view, 'math_inline').length === 1, 30000), 'custom delimiter triggers one conversion', docJSON(view));
+const [latex] = nodesOfType(view, 'math_inline');
+check(/x\^\{10\}/.test(latex), 'sloppy exponent is braced', latex);
+check(docText(view).includes('%% ignored %%'), 'the default delimiter no longer triggers', docText(view));
+resetPrefs();
+return { fails, latex, text: docText(view) };

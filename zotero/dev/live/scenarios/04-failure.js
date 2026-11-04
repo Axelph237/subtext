@@ -1,0 +1,14 @@
+resetPrefs();
+setPref('claudePath', '/nonexistent/claude');
+const { item, view, iwin } = await openNote('<p>Broken:</p>');
+await typeText(iwin, ' %% x squared %%');
+check(await until(() => progressWindowTexts().some((t) => t.includes('/nonexistent/claude')), 10000), 'a progress window names the failing CLI path', progressWindowTexts());
+check(pills(iwin) === 0, 'pill is removed after failure');
+check(docText(view) === 'Broken: %% x squared %%', 'raw text is left as typed', docText(view));
+check(nodesOfType(view, 'math_inline').length === 0, 'no math node was made');
+const error = progressWindowTexts().find((t) => t.includes('/nonexistent/claude'));
+const progressWin = [...Services.wm.getEnumerator(null)].find((w) => String(w.location).includes('progressWindow'));
+const shot = await snap('04-failure');
+const errShot = progressWin ? await snap('04-error-window', progressWin) : null;
+resetPrefs();
+return { fails, error, shot, errShot };

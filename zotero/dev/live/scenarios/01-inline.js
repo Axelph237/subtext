@@ -1,0 +1,18 @@
+resetPrefs();
+const { item, view, iwin } = await openNote('<p>The Gaussian integral is</p>');
+await typeText(iwin, ' %% integral from 0 to infinity of e to the minus x squared %%');
+check(await until(() => pills(iwin) === 1, 2000), 'pending pill appears while the CLI runs', pills(iwin));
+const pending = await snap('01-pending');
+await typeText(iwin, ' and more');
+check(pills(iwin) === 1, 'typing on while pending keeps the pill');
+check(await until(() => nodesOfType(view, 'math_inline').length === 1, 30000), 'trigger becomes one math_inline node', docJSON(view));
+const [latex] = nodesOfType(view, 'math_inline');
+check(/\\int/.test(latex) && /\\infty/.test(latex) && /e\^\{-x\^\{?2\}?\}/.test(latex), 'LaTeX is the Gaussian integral', latex);
+check(!docText(view).includes('%%'), 'raw trigger text is gone', docText(view));
+check(docText(view).startsWith('The Gaussian integral is '), 'text before the trigger is kept', docText(view));
+check(docText(view).endsWith(' and more'), 'text typed while pending is kept after the math', docText(view));
+check(pills(iwin) === 0, 'pill is removed after success');
+const html = await savedHTML(item, /class="math"/);
+check(/<span class="math">\$[^$]*\\int[^$]*\$<\/span> and more/.test(html), 'saved note HTML has an inline math span', html);
+await wait(500);
+return { fails, latex, html, pending, done: await snap('01-inline') };

@@ -1,0 +1,18 @@
+resetPrefs();
+const { item, view, iwin } = await openNote('<p>Sum of squares:</p><p></p>');
+await typeText(iwin, '%% sum i=1 to n of i squared %%');
+check(await until(() => nodesOfType(view, 'math_display').length === 1, 30000), 'whole-paragraph trigger becomes math_display', docJSON(view));
+const [latex] = nodesOfType(view, 'math_display');
+check(/\\sum_\{i=1\}\^\{?n\}?/.test(latex.replace(/\s+/g, '')), 'display LaTeX is the sum', latex);
+check(nodesOfType(view, 'math_inline').length === 0, 'no inline math was made');
+const doc = view.state.doc;
+check(doc.childCount === 3 && doc.child(2).type.name === 'paragraph', 'an empty paragraph follows the display math', docJSON(view));
+const { $from } = view.state.selection;
+check($from.parent === doc.child(2), 'cursor moved into the paragraph after the math', $from.parent.type.name);
+await typeText(iwin, 'next line');
+await wait(200);
+check(doc.child(1).type.name === 'math_display' && view.state.doc.child(2).textContent === 'next line', 'typing continues below the math', docJSON(view));
+const html = await savedHTML(item, /<pre class="math">/);
+check(/<pre class="math">\$\$[\s\S]*\\sum[\s\S]*\$\$<\/pre>/.test(html), 'saved note HTML has a display math block', html);
+await wait(500);
+return { fails, latex, html, done: await snap('02-display') };
