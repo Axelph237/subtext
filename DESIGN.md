@@ -43,15 +43,26 @@ BACKENDS = {
   'claude-code': { label, buildArgs(cfg) -> string[], stdinFor(conversion) -> string, parseOutput(stdout) -> Result },
 }
 Result = { ok: true, latex: string } | { ok: false, error: string }
+CANNOT_CONVERT_TOKEN = 'SUBTEXT_CANNOT_CONVERT'   // the model's whole answer when it cannot produce LaTeX
+CANNOT_CONVERT: string                            // the one error message for any answer that contains the token
+RESULT_MARKER = 'SUBTEXT_RESULT'                  // an operation's answer is work, marker, equation; only the equation is kept
 MODELS = [{ id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5 (cheapest)' }, sonnet-5-5, opus-5-5]
 DEFAULT_MODEL = 'claude-haiku-5-5'
 ```
 
-Context lets the model match the document's notation: bold vectors, `\mathbb` sets, names defined earlier, what an ambiguous phrase refers to. Both backends send `userMessage(conversion)` as the one user message. The system prompt says to convert only the `<math>` text, to use the context only to choose notation, and never to copy it or use it to solve, substitute, or simplify. An empty context sends the bare input, so the request is the same as before context existed.
+Context lets the model match the document's notation: bold vectors, `\mathbb` sets, names defined earlier, what an ambiguous phrase refers to. Both backends send `userMessage(conversion)` as the one user message. An empty context sends the bare input.
+
+The system prompt sorts the note into one of three kinds:
+
+1. Math. Convert it and never solve, simplify, evaluate, expand, or reorder it. Context only picks the notation.
+2. An operation on an equation in the context, such as `x to both sides`, `reduce sides by x`, `drop x on right`, or `simp left cross terms`. The model finds the equation, usually the most recent one, and writes the step into it. Nothing cancels and no arithmetic is done unless the note asks to simplify (`simplify`, `simp`, `combine like terms`, `and reduce`, and the like). A simplify can be scoped to a side, a kind of term, or both, and everything outside its scope is copied as it was. A step that names a side changes that side only, even when the equation is then false. `drop`, `remove`, and `delete` erase a term rather than subtract it. Nothing is solved for a variable unless asked.
+3. Anything else, including an operation with no equation in the context: the model answers `CANNOT_CONVERT_TOKEN` alone. `latexResult` maps any answer that contains the token, bare, wrapped, or inside prose, to `{ ok: false, error: CANNOT_CONVERT }`. It maps an answer with five plain words in a row, outside commands and `\text{}`, to the same error. Asked for the token, Haiku still answered 3 of 20 runs of the two error cases in prose ("This message is outside what I do here..."), and that prose would otherwise land in the document as math. The check flagged exactly those 3 of 105 distinct eval outputs. The hosts already show `{ ok: false }` errors and leave the text, so they need no change.
+
+An operation's answer is a scratchpad, `kind: <add, subtract, multiply, divide, power, erase, or none>; step: <equation with the step written in>; simplify: <no, or the note's simplify word and what it covers>`, then `RESULT_MARKER`, then the final equation. `latexResult` keeps only what follows the last marker. Haiku 5.5 at low effort tends to write its work before its result (`2x + 3 - 3 = 11 - 3 \Rightarrow 2x = 8`). Asked for the result alone, it passed 125 of 160 operation and error runs (10 per case): both simplify cases passed 0 of 10, and `remove the b on the right` passed 0 of 10, written as `y = mx + b - b`. With the marker it passed 153 to 157 of 160 across prompt revisions, still reading drop and remove as subtraction in some runs. Naming the `kind` first, with drop, remove, and delete as `erase`, fixed those (20 of 20 each). Quoting the simplify word took `subtract 3 from both sides and simplify` from 8 of 10 to 20 of 20. The final prompt passed 160 of 160 operation and error runs (10 per case) and 60 of 60 error-case runs (20 per case). The prompt's examples use other letters than the eval cases.
 
 A host that slices the text before the trigger takes `chars + 1` characters. With exactly `chars`, `contextWindow` cannot see the character before its cut, so it cannot tell whether the cut split a word.
 
-`core/evals/run.mjs` runs the claude CLI from a temp dir, as the hosts do. Run from the checkout, the CLI sees the repo, and Haiku wrote `\mathrm{P}(A \mid B)` for `P of A given B` in 2 of 10 runs.
+`core/evals/run.mjs` runs the claude CLI from a temp dir, as the hosts do. Run from the checkout, the CLI sees the repo, and Haiku wrote `\mathrm{P}(A \mid B)` for `P of A given B` in 2 of 10 runs. A case may have `context`, and `expectError` passes only on the `CANNOT_CONVERT` error. `STX_REPEAT=10` runs each case ten times and prints a pass rate, and `STX_ONLY=<regex>` picks cases by input.
 
 Facts behind the backends:
 
