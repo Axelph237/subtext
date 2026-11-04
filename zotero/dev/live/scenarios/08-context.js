@@ -1,0 +1,11 @@
+resetPrefs();
+const stub = await stubClaude();
+setPref('claudePath', stub.path);
+const { view, iwin } = await openNote('<p>Let <span class="math">$\\mathbf{v}$</span> be a vector.</p><pre class="math">$$v \\in \\mathbb{R}^n$$</pre><p>Then</p>');
+await typeText(iwin, ' %% v dot w %%');
+check(await until(() => nodesOfType(view, 'math_inline').length === 2, 10000), 'the stub result becomes a second math_inline node', docJSON(view));
+const stdin = await stub.stdin();
+const expected = '<context>\nLet $\\mathbf{v}$ be a vector.\n$$v \\in \\mathbb{R}^n$$\nThen\n</context>\n\n<math>\nv dot w\n</math>';
+check(stdin === expected, 'the CLI receives the note before the trigger, with earlier math as $...$ and $$...$$', stdin);
+resetPrefs();
+return { fails, stdin };

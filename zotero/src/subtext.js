@@ -3,7 +3,7 @@
 var SubTeXt = (() => {
   const core = ChromeUtils.importESModule('chrome://subtext/content/core/subtext.mjs');
   const { Subprocess } = ChromeUtils.importESModule('resource://gre/modules/Subprocess.sys.mjs');
-  const { BACKENDS, DEFAULT_BACKEND, DEFAULT_MODEL, DEFAULT_DELIMITER, findTrigger } = core;
+  const { BACKENDS, DEFAULT_BACKEND, DEFAULT_MODEL, DEFAULT_DELIMITER, contextWindow, findTrigger, parseContextChars } = core;
   Components.utils.importGlobalProperties(['fetch']);
 
   const PREF = 'extensions.subtext.';
@@ -14,6 +14,8 @@ var SubTeXt = (() => {
   // Non-text inline nodes (citations, images, math) read as one placeholder each,
   // so a trigger can never span them.
   const OBJECT = '\ufffc';
+  // Earlier math reads as the source Zotero saves, because converted math best shows the note's notation.
+  const MATH_SOURCE = { math_inline: (latex) => `$${latex}$`, math_display: (latex) => `$$${latex}$$` };
   const PILL_COLORS = {
     light: { text: '#2c5cc5', fill: '#eef3fd', edge: '#c4d4f6' },
     dark: { text: '#a8c2f7', fill: '#1f2c45', edge: '#38507f' },
@@ -27,6 +29,7 @@ var SubTeXt = (() => {
       model: get('model') || DEFAULT_MODEL,
       claudePath: get('claudePath'),
       delimiter: get('delimiter') || DEFAULT_DELIMITER,
+      contextChars: parseContextChars(Zotero.Prefs.get(PREF + 'contextChars', true)),
     };
   }
 
@@ -143,6 +146,34 @@ var SubTeXt = (() => {
     return { text, positions };
   }
 
+  function inlineSource(block, start, end) {
+    let text = '';
+    for (let i = 0, pos = start; i < block.childCount && pos < end; i++) {
+      const child = block.child(i);
+      const math = MATH_SOURCE[child.type.name];
+      if (child.isText) text += child.text.slice(0, end - pos);
+      else if (math) text += math(child.textContent);
+      pos += child.nodeSize;
+    }
+    return text;
+  }
+
+  function noteTextBefore(doc, end) {
+    const lines = [];
+    const visitChildren = (node, start) => {
+      for (let i = 0, pos = start; i < node.childCount && pos < end; i++) {
+        const child = node.child(i);
+        const math = MATH_SOURCE[child.type.name];
+        if (math) lines.push(math(child.textContent));
+        else if (child.isTextblock) lines.push(inlineSource(child, pos + 1, end));
+        else visitChildren(child, pos + 1);
+        pos += child.nodeSize;
+      }
+    };
+    visitChildren(doc, 0);
+    return lines.join('\n');
+  }
+
   function nearestOccurrence(doc, text, near) {
     let best = null;
     const visit = (node, pos) => {
@@ -246,7 +277,8 @@ var SubTeXt = (() => {
 
     const record = { win, view, text, from, pill: showPill(view, from) };
     pending.add(record);
-    const result = await convert({ input: trigger.input, context: '' }, settings);
+    const context = contextWindow(noteTextBefore(view.state.doc, from), settings.contextChars);
+    const result = await convert({ input: trigger.input, context }, settings);
     if (!pending.has(record)) return;
     release(record);
     if (!result.ok) {

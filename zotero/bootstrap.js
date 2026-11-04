@@ -1,7 +1,7 @@
 'use strict';
 
 const SCRIPTS = ['src/subtext.js'];
-const PREFS = ['backend', 'model', 'claudePath', 'delimiter'];
+const PREFS = ['backend', 'model', 'claudePath', 'delimiter', 'contextChars'];
 
 var chromeHandle = null;
 

@@ -13,6 +13,7 @@ window.SubTeXtPane = {
     this.initApiKey();
     this.initClaudePath();
     this.initDelimiter(core);
+    this.initContextChars(core);
     this.$('subtext-test').addEventListener('command', () => this.test());
   },
 
@@ -80,6 +81,14 @@ window.SubTeXtPane = {
     input.addEventListener('input', hint);
     input.addEventListener('syncfrompreference', hint);
     hint();
+  },
+
+  // Set from here rather than bound with preference=, so the int pref only ever gets a parsed number.
+  initContextChars({ DEFAULT_CONTEXT_CHARS, MAX_CONTEXT_CHARS, parseContextChars }) {
+    const input = this.$('subtext-context-chars');
+    Object.assign(input, { max: MAX_CONTEXT_CHARS, placeholder: DEFAULT_CONTEXT_CHARS });
+    input.value = parseContextChars(Zotero.Prefs.get(this.PREF + 'contextChars', true));
+    input.addEventListener('input', () => Zotero.Prefs.set(this.PREF + 'contextChars', parseContextChars(input.value), true));
   },
 
   async test() {

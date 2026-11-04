@@ -31,6 +31,14 @@
     <description id="subtext-delimiter-hint"/>
   </groupbox>
   <groupbox>
+    <label><html:h2>Context</html:h2></label>
+    <hbox align="center">
+      <label control="subtext-context-chars" value="Characters of text before the trigger to send"/>
+      <html:input id="subtext-context-chars" type="number" min="0" step="100" style="width: 6em"/>
+    </hbox>
+    <description>The model reads this much of the note before the math, so it can match your notation. 0 sends only the math.</description>
+  </groupbox>
+  <groupbox>
     <label><html:h2>Test</html:h2></label>
     <hbox align="center">
       <html:input id="subtext-test-input" type="text" value="integral from 0 to infinity of e to the minus x squared" style="width: 28em"/>

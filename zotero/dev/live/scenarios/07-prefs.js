@@ -12,6 +12,15 @@ check($('subtext-backend').value === 'claude-code', 'Claude Code is selected by 
 const items = [...$('subtext-model').menupopup.children].map((m) => m.value);
 check(items.length === 4 && items[0] === 'claude-haiku-5-5', 'model list has the three models and Other', items);
 check($('subtext-model').value === 'claude-haiku-5-5', 'Haiku is selected by default');
+const context = $('subtext-context-chars');
+check(context.value === '2000', 'the context field shows the default 2000', context.value);
+context.value = '300';
+context.dispatchEvent(new prefWin.Event('input'));
+check(Zotero.Prefs.get(PREF + 'contextChars', true) === 300, 'a context size is saved as a number', Zotero.Prefs.get(PREF + 'contextChars', true));
+check(Services.prefs.getPrefType(PREF + 'contextChars') === Services.prefs.PREF_INT, 'the context pref stays an int pref');
+context.value = '';
+context.dispatchEvent(new prefWin.Event('input'));
+check(Zotero.Prefs.get(PREF + 'contextChars', true) === 2000, 'an empty context field saves the default');
 const shown = (backend) => !prefWin.document.querySelector(`[data-backend="${backend}"]`).hidden;
 check(shown('claude-code') && !shown('anthropic'), 'only Claude Code settings show for the Claude Code backend');
 
