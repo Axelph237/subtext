@@ -120,10 +120,14 @@ function afterResultMarker(text) {
 }
 
 // Asked for the token, the model still answers some non-math notes in prose, which must never land in a
-// document as math. Five plain words in a row, outside commands and \text{}, do not occur in LaTeX math.
+// document as math. Outside commands and \text{}, prose is a run of five or more words joined only by spaces
+// and punctuation, with at least two real words. Math joins short variable names with operators and parentheses.
 function looksLikeProse(latex) {
   const bare = latex.replace(/\\(?:text|mathrm|operatorname|textbf|textit|mbox)\{[^}]*\}/g, ' ').replace(/\\[a-zA-Z]+/g, ' ');
-  return /[A-Za-z]{2,}(?:[\s,.;:'"!?()-]+[A-Za-z]{2,}){4,}/.test(bare);
+  return bare.split(/[^A-Za-z\s,.;:'"!?]+/).some((run) => {
+    const words = run.match(/[A-Za-z]+/g) ?? [];
+    return words.length >= 5 && words.filter((word) => word.length >= 4).length >= 2;
+  });
 }
 
 function latexResult(text) {

@@ -270,6 +270,10 @@ const WORDY_LATEX = [
   '\\forall \\varepsilon > 0 \\ \\exists \\delta > 0',
   '\\text{for every real number } x \\text{ there is an integer } n > x',
   '\\sin x \\cos x \\tan x \\log x \\exp x',
+  'ab - ac - ad - ae - af',
+  'xy - yz - zx - xw - wy',
+  '(ab)(cd)(ef)(gh)(ij)',
+  '\\int f dx dy dz dt du',
 ];
 
 test('both backends map a prose answer to the fixed error and keep wordy LaTeX', () => {
