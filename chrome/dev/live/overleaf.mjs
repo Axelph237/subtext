@@ -1,9 +1,10 @@
 // Tries the built extension on the real overleaf.com in a dedicated profile. It creates one scratch
 // project, converts an inline and a whole-line trigger in main.tex, then trashes and permanently
 // deletes that project by its recorded ID. It never touches any other project.
-// Usage: node chrome/dev/live/overleaf.mjs <profile-dir>
-// Use a profile dir of its own, not a Chrome or Brave profile. Sign in there once; it is kept.
-import { execFileSync } from 'node:child_process';
+// Usage: node chrome/dev/live/overleaf.mjs --sign-in <profile-dir>   once, to sign in by hand
+//        node chrome/dev/live/overleaf.mjs <profile-dir>             the test
+// Use a profile dir of its own, not your Chrome or Brave profile. Set BROWSER to use another Chromium.
+import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,17 +21,32 @@ const SELECTORS = {
   errorMessage: '.qm-error',
 };
 const DASHBOARD_URL = 'https://www.overleaf.com/project';
-const SIGN_IN_TIMEOUT_MS = 5 * 60 * 1000;
+const DASHBOARD_TIMEOUT_MS = 60000;
 const CONVERSION_TIMEOUT_MS = 90000;
 const INLINE_TRIGGER = 'Inline: %% x squared plus one %%';
 const DISPLAY_TRIGGER = '%% sum i=1 to n of i %%';
 
-const profileArg = process.argv[2];
+const BROWSER = process.env.BROWSER || '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
+// Playwright launches with these, so the sign-in window must too, or the test cannot decrypt its cookies.
+const KEYCHAIN_ARGS = ['--use-mock-keychain', '--password-store=basic'];
+
+const signIn = process.argv[2] === '--sign-in';
+const profileArg = process.argv[signIn ? 3 : 2];
 if (!profileArg) {
-  console.error('usage: node chrome/dev/live/overleaf.mjs <profile-dir>');
+  console.error('usage: node chrome/dev/live/overleaf.mjs [--sign-in] <profile-dir>');
   process.exit(2);
 }
 const PROFILE = resolve(profileArg);
+
+// Google refuses sign-in in a browser under automation, so signing in happens in a plain window first.
+if (signIn) {
+  mkdirSync(PROFILE, { recursive: true });
+  console.log('Sign in to Overleaf in the window that opens, then quit that window (Cmd+Q).');
+  const child = spawn(BROWSER, [`--user-data-dir=${PROFILE}`, ...KEYCHAIN_ARGS, '--no-first-run', '--no-default-browser-check', 'https://www.overleaf.com/login'], { stdio: 'ignore' });
+  await new Promise((done) => child.on('exit', done));
+  console.log(`Signed-in profile saved in ${PROFILE}. Now run: node ${fileURLToPath(import.meta.url)} ${PROFILE}`);
+  process.exit(0);
+}
 const CHROME = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const EXTENSION = join(CHROME, 'build/extension');
 
@@ -39,7 +55,7 @@ execFileSync(join(CHROME, 'build.sh'), { stdio: 'inherit' });
 execFileSync(join(CHROME, 'native-host/install.sh'), ['--user-data-dir', PROFILE], { stdio: 'inherit' });
 
 const context = await chromium.launchPersistentContext(PROFILE, {
-  channel: 'chromium',
+  executablePath: BROWSER,
   headless: false,
   viewport: null,
   args: [`--disable-extensions-except=${EXTENSION}`, `--load-extension=${EXTENSION}`],
@@ -64,10 +80,12 @@ const check = (ok, message) => {
 
 await page.goto(DASHBOARD_URL);
 if (new URL(page.url()).pathname !== '/project') {
-  console.log('\n>>> Sign in to Overleaf in the browser window. Waiting up to 5 minutes for the project dashboard.\n');
+  console.log(`\nNot signed in. Run once first: node ${fileURLToPath(import.meta.url)} --sign-in ${PROFILE}\n`);
+  await context.close();
+  process.exit(2);
 }
-await page.waitForURL((url) => url.pathname === '/project', { timeout: SIGN_IN_TIMEOUT_MS });
-await page.locator(SELECTORS.newProjectButton).first().waitFor({ timeout: SIGN_IN_TIMEOUT_MS });
+await page.waitForURL((url) => url.pathname === '/project', { timeout: DASHBOARD_TIMEOUT_MS });
+await page.locator(SELECTORS.newProjectButton).first().waitFor({ timeout: DASHBOARD_TIMEOUT_MS });
 console.log('signed in; dashboard is open');
 
 const projectName = `Quick Math scratch ${new Date().toISOString().replace(/[:.]/g, '-')}`;
