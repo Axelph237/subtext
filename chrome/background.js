@@ -48,10 +48,10 @@ const METHODS = {
     }
   },
 
-  // Pages get the delimiter only, never the API key.
+  // Pages get the trigger settings only, never the API key.
   async settings() {
-    const { delimiter } = await loadSettings();
-    return { delimiter };
+    const { delimiter, contextChars } = await loadSettings();
+    return { delimiter, contextChars };
   },
 };
 

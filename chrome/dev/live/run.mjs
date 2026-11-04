@@ -3,7 +3,7 @@
 // Usage: node chrome/dev/live/run.mjs [work-dir]   (HEADED=1 to watch, ONLY="inline undo" to pick)
 import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,6 +28,16 @@ function extensionIdFromKey() {
 
 rmSync(PROFILE, { recursive: true, force: true });
 mkdirSync(SHOTS, { recursive: true });
+
+// Stands in for the claude CLI behind the native host and records the message it receives.
+// The host runs without the shell PATH, so the stub names node by absolute path.
+const STUB_CLAUDE = join(WORK, 'stub-claude');
+const STUB_STDIN = join(WORK, 'stub-stdin.txt');
+writeFileSync(STUB_CLAUDE, `#!${process.execPath}
+const fs = require('node:fs');
+fs.writeFileSync(${JSON.stringify(STUB_STDIN)}, fs.readFileSync(0, 'utf8'));
+process.stdout.write(JSON.stringify({ type: 'result', is_error: false, stop_reason: 'end_turn', result: 'x' }));
+`, { mode: 0o755 });
 execFileSync(join(CHROME, 'build.sh'), { stdio: 'inherit' });
 
 const fixture = await build({ entryPoints: [join(LIVE, 'fixture/editor.mjs')], bundle: true, format: 'iife', target: 'chrome111', write: false });
@@ -214,6 +224,45 @@ scenario('undo', async (expect) => {
   expect(await page.locator('.stx-pending').count() === 0 && await resultCount(page) === 1, 'undo does not start a new conversion');
 });
 
+async function stubConversion(settings, typed) {
+  rmSync(STUB_STDIN, { force: true });
+  await useSettings({ claudePath: STUB_CLAUDE, ...settings });
+  const page = await openEditor();
+  await endOfLine(page, 4);
+  await page.keyboard.type(typed);
+  await settle(page);
+  return { page, stdin: readFileSync(STUB_STDIN, 'utf8') };
+}
+
+scenario('context', async (expect) => {
+  const { page, stdin } = await stubConversion({}, ' Let v be a vector. %% v dot w %%');
+  const expected = '<context>\n\\documentclass{article}\n\\begin{document}\n\nIntro line. Let v be a vector.\n</context>\n\n<math>\nv dot w\n</math>';
+  expect(stdin === expected, `the CLI receives the document before the trigger as context: ${JSON.stringify(stdin)}`);
+  expect(await line(page, 4) === 'Intro line. Let v be a vector. $x$', `the stub result lands: ${await line(page, 4)}`);
+});
+
+scenario('context-window', async (expect) => {
+  const { stdin } = await stubConversion({ contextChars: 23 }, ' Let v be a vector. %% v dot w %%');
+  expect(stdin === '<context>\nLet v be a vector.\n</context>\n\n<math>\nv dot w\n</math>', `a window that cuts a word drops it: ${JSON.stringify(stdin)}`);
+});
+
+scenario('context-off', async (expect) => {
+  const { stdin } = await stubConversion({ contextChars: 0 }, ' Let v be a vector. %% v dot w %%');
+  expect(stdin === 'v dot w', `contextChars 0 sends the bare input: ${JSON.stringify(stdin)}`);
+});
+
+scenario('convert-params', async (expect) => {
+  rmSync(STUB_STDIN, { force: true });
+  await useSettings({ claudePath: STUB_CLAUDE });
+  const convert = (params) => extensionPage.evaluate(({ tag, params }) => chrome.runtime.sendMessage({ tag, id: crypto.randomUUID(), method: 'convert', params }), { tag: TAG, params });
+  const bad = await convert({ input: 'x', context: 5 });
+  expect(!bad.ok && /context/.test(bad.error), `a context that is not text is refused: ${JSON.stringify(bad)}`);
+  const long = await convert({ input: 'x', context: `${'a'.repeat(30000)} tail` });
+  const stdin = readFileSync(STUB_STDIN, 'utf8');
+  const sent = stdin.slice('<context>\n'.length, stdin.indexOf('\n</context>'));
+  expect(long.ok && sent.length === 20000 && sent.endsWith('a tail'), `an oversized context is cut to its last 20000 characters: ${sent.length}`);
+});
+
 scenario('bad-claude-path', async (expect) => {
   await useSettings({ claudePath: '/nonexistent/claude' });
   for (const theme of ['light', 'dark']) {
@@ -262,6 +311,7 @@ scenario('options-page', async (expect) => {
   await page.check('input[name="backend"][value="claude-code"]');
   await page.fill('#claude-path', '/opt/test/claude');
   await page.fill('#delimiter', '@@');
+  await page.fill('#context-chars', '500');
   await page.waitForTimeout(300);
   await page.reload();
   const restored = {
@@ -271,8 +321,9 @@ scenario('options-page', async (expect) => {
     apiKey: await page.inputValue('#api-key'),
     claudePath: await page.inputValue('#claude-path'),
     delimiter: await page.inputValue('#delimiter'),
+    contextChars: await page.inputValue('#context-chars'),
   };
-  const expected = { backend: 'claude-code', model: '__other__', custom: 'claude-custom-test', apiKey: 'sk-ant-options-test', claudePath: '/opt/test/claude', delimiter: '@@' };
+  const expected = { backend: 'claude-code', model: '__other__', custom: 'claude-custom-test', apiKey: 'sk-ant-options-test', claudePath: '/opt/test/claude', delimiter: '@@', contextChars: '500' };
   expect(JSON.stringify(restored) === JSON.stringify(expected), `every field is restored: ${JSON.stringify(restored)}`);
   expect(await page.textContent('#delimiter-hint') === 'Type @@ x squared @@ in an Overleaf project to convert it.', 'the delimiter hint follows the field');
   await page.selectOption('#model', 'claude-sonnet-5-5');
@@ -282,7 +333,7 @@ scenario('options-page', async (expect) => {
   expect(await page.inputValue('#model') === 'claude-sonnet-5-5' && await page.isHidden('#model-custom'), 'a listed model is restored');
   expect(await page.inputValue('input[name="backend"]:checked') === 'anthropic', 'the backend is restored');
   const stored = await page.evaluate(() => chrome.storage.local.get(null));
-  expect(stored.model === 'claude-sonnet-5-5' && stored.apiKey === 'sk-ant-options-test' && stored.claudePath === '/opt/test/claude' && stored.delimiter === '@@' && stored.backend === 'anthropic',
+  expect(stored.model === 'claude-sonnet-5-5' && stored.apiKey === 'sk-ant-options-test' && stored.claudePath === '/opt/test/claude' && stored.delimiter === '@@' && stored.backend === 'anthropic' && stored.contextChars === '500',
     `storage holds the fields: ${JSON.stringify(stored)}`);
   await page.screenshot({ path: join(SHOTS, 'options.png'), fullPage: true });
   await page.check('input[name="backend"][value="claude-code"]');

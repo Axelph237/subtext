@@ -44,6 +44,13 @@
     </section>
 
     <section>
+      <h2>Context</h2>
+      <label for="context-chars">Characters of text before the trigger to send</label>
+      <input id="context-chars" type="number" min="0" step="100" class="short">
+      <p class="note">The model reads this much of your document before the math, so it can match your notation. 0 sends only the math.</p>
+    </section>
+
+    <section>
       <h2>Test</h2>
       <div class="row">
         <input id="test-input" type="text" value="integral from 0 to infinity of e to the minus x squared">

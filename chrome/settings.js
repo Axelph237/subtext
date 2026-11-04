@@ -1,6 +1,6 @@
-import { BACKENDS, DEFAULT_BACKEND, DEFAULT_DELIMITER, DEFAULT_MODEL } from './core/subtext.mjs';
+import { BACKENDS, DEFAULT_BACKEND, DEFAULT_DELIMITER, DEFAULT_MODEL, parseContextChars } from './core/subtext.mjs';
 
-const KEYS = ['backend', 'model', 'apiKey', 'claudePath', 'delimiter'];
+const KEYS = ['backend', 'model', 'apiKey', 'claudePath', 'delimiter', 'contextChars'];
 
 export async function loadSettings() {
   const stored = await chrome.storage.local.get(KEYS);
@@ -11,5 +11,6 @@ export async function loadSettings() {
     apiKey: text('apiKey'),
     claudePath: text('claudePath'),
     delimiter: text('delimiter') || DEFAULT_DELIMITER,
+    contextChars: parseContextChars(stored.contextChars),
   };
 }

@@ -1,5 +1,5 @@
 // Runs in the page's MAIN world, where Overleaf's editor hook fires. build.sh bundles this file with core.
-import { DEFAULT_DELIMITER, FORMATS, findTrigger } from './core/subtext.mjs';
+import { DEFAULT_CONTEXT_CHARS, DEFAULT_DELIMITER, FORMATS, contextWindow, findTrigger, parseContextChars } from './core/subtext.mjs';
 import { TAG } from './protocol.js';
 
 const REQUIRED_EXPORTS = ['Decoration', 'EditorView', 'StateEffect', 'StateField', 'ViewPlugin', 'isolateHistory'];
@@ -8,6 +8,7 @@ const ERROR_MS = 6000;
 const HOOK_GRACE_MS = 15000;
 
 let delimiter = DEFAULT_DELIMITER;
+let contextChars = DEFAULT_CONTEXT_CHARS;
 const callbacks = new Map();
 
 function send(method, params, callback) {
@@ -40,7 +41,11 @@ function triggerAtCursor(state) {
   if (!main.empty) return null;
   const line = state.doc.lineAt(main.head);
   const trigger = findTrigger(line.text.slice(0, main.head - line.from), delimiter);
-  return trigger && { from: line.from + trigger.start, to: line.from + trigger.end, input: trigger.input };
+  if (!trigger) return null;
+  const from = line.from + trigger.start;
+  // One extra character lets contextWindow see whether its cut splits a word.
+  const context = contextWindow(state.sliceDoc(Math.max(0, from - contextChars - 1), from), contextChars);
+  return { from, to: line.from + trigger.end, input: trigger.input, context };
 }
 
 // An edit inside a pending trigger drops it, because the result would overwrite that edit.
@@ -117,12 +122,12 @@ function subtext(CodeMirror) {
   const detector = ViewPlugin.define((view) => {
     let live = true;
 
-    async function start(doc, { from, to, input }) {
+    async function start(doc, { from, to, input, context }) {
       if (!live || view.state.doc !== doc) return;
       if (view.state.field(pending).some((entry) => entry.from < to && entry.to > from)) return;
       const id = nextId++;
       view.dispatch({ effects: addPending.of({ id, from, to }) });
-      const result = await convert({ input, context: '' });
+      const result = await convert({ input, context });
       const entry = live && (view.state.field(pending, false) ?? []).find((e) => e.id === id);
       if (!entry) return;
       if (result?.ok) {
@@ -191,6 +196,7 @@ window.addEventListener('UNSTABLE_editor:extensions', (event) => {
     extension = subtext(CodeMirror);
     send('settings', {}, (result) => {
       if (typeof result?.delimiter === 'string') delimiter = result.delimiter;
+      contextChars = parseContextChars(result?.contextChars);
     });
   }
   extensions.push(extension);
