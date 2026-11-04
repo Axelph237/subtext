@@ -47,6 +47,67 @@ Click **Test** to convert the sample text with the current settings. The pane sh
 - If the conversion fails, the text stays as you typed it, and a Zotero notification shows the error.
 - Read-only notes are skipped.
 
+## Chrome extension (Overleaf)
+
+The Quick Math extension works in the Overleaf source editor, in Brave or Chrome. In a project, type:
+
+```
+%% sum i=1 to n of i squared %%
+```
+
+When you type the closing `%%`, the text becomes `$\sum_{i=1}^{n} i^{2}$`.
+
+### Install
+
+1. Build the extension with `chrome/build.sh`. This creates the `chrome/build/extension` folder and `chrome/build/quick-math-chrome.zip`. The build needs Node. The first build runs `npm ci` in `chrome/dev` to get esbuild.
+2. Open `brave://extensions` in Brave or `chrome://extensions` in Chrome.
+3. Turn on **Developer mode**.
+4. Click **Load unpacked** and select the `chrome/build/extension` folder.
+5. To use your Claude Code login, run `chrome/native-host/install.sh` in a terminal. It installs a small helper program that runs `claude` for the extension, for Chrome and for Brave. You do not need it if you use an Anthropic API key.
+
+To update, run `chrome/build.sh` again, click the reload icon on the extension's card, and reload the Overleaf tab. Run `install.sh` again too, because it copies the helper into each browser's folder.
+
+### Configure
+
+On the extensions page, click **Details** on Quick Math, then **Extension options**. Each change is saved at once.
+
+| Setting | What it does | Default |
+| --- | --- | --- |
+| Convert with | **Claude Code login** runs the `claude` CLI through the helper program. **Anthropic API key** calls the Anthropic API directly. | Claude Code login |
+| Model | Claude Haiku 5.5, Sonnet 5.5, or Opus 5.5. Select **Other model id** to type any model id. | Claude Haiku 5.5 |
+| Anthropic API key | Your key for the Anthropic API. It is stored in the browser profile's extension storage, which is not encrypted. | none |
+| Path to the claude CLI | The full path to `claude`. Leave it empty to find it automatically. | empty |
+| Delimiter | The text that opens and closes a trigger. | `%%` |
+
+Click **Test** to convert the sample text with the current settings. The page shows the LaTeX or the error. If the helper program is not installed, the error says so.
+
+### Use
+
+- Open a project and type `%%`, the math, and `%%` in the source editor. The text is underlined with blue dots while Claude works.
+- You can keep typing, on the same line or anywhere else. When the result comes back, Quick Math replaces the trigger text where it is now.
+- If the trigger is alone on its line, it becomes display math: `\[`, the LaTeX, and `\]` on three lines.
+- Press Cmd+Z (Ctrl+Z on Windows and Linux) to turn the math back into the text you typed.
+- If you delete or change the trigger text before the result comes back, the result is dropped.
+- If the conversion fails, the text stays as you typed it, and a note under it shows the error for a few seconds.
+
+With the default delimiter, a trigger that is not converted is a LaTeX comment, so it does not show in your PDF.
+
+### Limits
+
+- Quick Math uses an Overleaf extension hook (`UNSTABLE_editor:extensions`) that Overleaf calls unsupported and subject to change without warning. If Overleaf changes it, Quick Math stops converting, and the editor works as before. The browser console then shows a message that starts with "Quick Math is off".
+- It runs only on `https://www.overleaf.com/project/...` pages. Self-hosted Overleaf servers are not included.
+- `install.sh` supports macOS only.
+- The extension was tested in Playwright's Chromium (Chrome for Testing 156) against a page that copies Overleaf's hook. It has not yet been tested on overleaf.com itself or in Brave.
+
+### Development and live tests
+
+- `chrome/core` and `chrome/native-host/core` are symlinks to `core/`. `chrome/build.sh` bundles the two content scripts, `overleaf.js` and `bridge.js`, with the core they import, because content scripts cannot be ES modules. CodeMirror is never bundled. Quick Math uses the CodeMirror classes that Overleaf passes to the hook.
+- To add a backend, add an entry to `BACKENDS` in `core/quickmath.mjs` and a transport with the same id to `TRANSPORTS` in `chrome/background.js`. Give its settings section `data-backend="<id>"` in `chrome/options.html`.
+
+`chrome/dev/live/run.mjs` tests the extension in a throwaway browser profile. Run `npm install` and `npx playwright install chromium` in `chrome/dev` once. Then run `node chrome/dev/live/run.mjs`, and pass a work directory if you want to keep the results in a known place. It builds the extension, loads it into Playwright's Chromium, and installs the helper program into that profile only. It serves a page at `https://www.overleaf.com/project/fixture` that fires Overleaf's hook with real CodeMirror code, in light and dark themes, under Overleaf's content security policy. Each scenario types with real key events. The scenarios cover inline and display math through the real `claude` CLI, typing while a conversion runs, deleting or editing the trigger while it runs, undo, a wrong CLI path, a custom delimiter, the options page and its Test button, and the Anthropic API with a fake key. It prints PASS or FAIL for each scenario and keeps screenshots in the work directory. Set `HEADED=1` to watch, and `ONLY="inline undo"` to run some scenarios. A full run costs well under one cent.
+
+`chrome/dev/live/overleaf.mjs <profile-dir>` tries the extension on overleaf.com. Give it a folder of its own, not your Chrome or Brave profile. It opens a browser window and waits up to 5 minutes for you to sign in. Then it creates a project named `Quick Math scratch <time>`, converts an inline and a whole-line trigger in `main.tex`, and prints PASS or FAIL. At the end it moves that project to the trash and deletes it permanently. It finds the project by the ID it recorded when it created it, so it never touches your other projects. If Overleaf's dashboard has changed, fix the selectors at the top of the file.
+
 ## Development
 
 - Run `node --test core/test/` to test the core: trigger detection, LaTeX cleanup, and each backend's request and response handling.
