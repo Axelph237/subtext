@@ -115,7 +115,6 @@ export const BACKENDS = {
             system: SYSTEM_PROMPT,
             messages: [{ role: 'user', content: input }],
             output_config: { effort: 'low' },
-            thinking: { type: 'disabled' },
           }),
         },
       };

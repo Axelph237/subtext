@@ -74,7 +74,7 @@ test('anthropic buildRequest targets the Messages API with the key, model, promp
   assert.equal(body.model, 'claude-haiku-5-5');
   assert.equal(body.system, SYSTEM_PROMPT);
   assert.deepEqual(body.messages, [{ role: 'user', content: 'x squared' }]);
-  assert.deepEqual(body.thinking, { type: 'disabled' });
+  assert.equal('thinking' in body, false, 'Sonnet 5.5 and Opus 5.5 reject disabled thinking');
   assert.deepEqual(body.output_config, { effort: 'low' });
   assert.equal('temperature' in body, false, 'API version 2026-10-21 rejects temperature');
 });
