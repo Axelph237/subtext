@@ -1,7 +1,7 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-export const DEFAULTS = { backend: 'claude-code', model: 'claude-haiku-5-5', claudePath: '', delimiter: ';;', apiKeySecret: '' };
+export const DEFAULTS = { backend: 'claude-code', model: 'claude-haiku-5-5', claudePath: '', delimiter: ';;', contextChars: 2000, apiKeySecret: '' };
 
 export const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -48,6 +48,20 @@ export const pendingMarks = (page) => page.evaluate(() => document.querySelector
 export const finished = (page) => page.evaluate(() => window.stxFinished);
 export const notices = (page) => page.evaluate(() => [...document.querySelectorAll('.notice')].map((n) => n.innerText));
 export const setTheme = (page, theme) => page.evaluate((t) => app.changeTheme(t), theme);
+
+// Stands in for the claude CLI and records the message it receives. It names node by absolute path,
+// because Obsidian may not have the shell PATH.
+export async function stubClaude(work) {
+  const path = join(work, 'stub-claude');
+  const stdinPath = join(work, 'stub-stdin.txt');
+  await rm(stdinPath, { force: true });
+  await writeFile(path, `#!${process.execPath}
+const fs = require('node:fs');
+fs.writeFileSync(${JSON.stringify(stdinPath)}, fs.readFileSync(0, 'utf8'));
+process.stdout.write(JSON.stringify({ type: 'result', is_error: false, stop_reason: 'end_turn', result: 'x' }));
+`, { mode: 0o755 });
+  return { path, stdin: () => readFile(stdinPath, 'utf8') };
+}
 
 // Obsidian writes the note a couple of seconds after the last edit.
 export async function diskText(vault, name, expect) {

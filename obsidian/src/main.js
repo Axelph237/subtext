@@ -35,6 +35,7 @@ export default class SubTeXtPlugin extends Plugin {
     this.addSettingTab(new SubTeXtSettingTab(this.app, this));
     this.registerEditorExtension(subtextExtension({
       delimiter: () => this.settings.delimiter,
+      contextChars: () => this.settings.contextChars,
       convert: (conversion) => this.convert(conversion),
       notify: (error) => new Notice(`SubTeXt could not convert: ${error}`, 8000),
     }));
