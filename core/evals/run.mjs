@@ -3,10 +3,10 @@
 import { spawn } from 'node:child_process';
 import { homedir } from 'node:os';
 import katex from 'katex';
-import { BACKENDS, DEFAULT_MODEL } from '../quickmath.mjs';
+import { BACKENDS, DEFAULT_MODEL } from '../subtext.mjs';
 
 const CLAUDE = process.argv[2] || `${homedir()}/.local/bin/claude`;
-const MODEL = process.env.QM_MODEL || DEFAULT_MODEL;
+const MODEL = process.env.STX_MODEL || DEFAULT_MODEL;
 const backend = BACKENDS['claude-code'];
 
 // `must` and `mustNot` check that meaning survives and the model did not solve the math.

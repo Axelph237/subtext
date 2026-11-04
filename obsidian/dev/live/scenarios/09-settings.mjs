@@ -2,21 +2,21 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { detectClaudePath } from '../../../../core/node/claude-cli.mjs';
 
-const KEY_ID = 'quick-math-settings-key';
+const KEY_ID = 'subtext-settings-key';
 const KEY = 'sk-ant-settings-roundtrip';
 
 export default async ({ page, vault, check, snap, until, wait, setTheme }) => {
-  const dataPath = join(vault, '.obsidian/plugins/quick-math/data.json');
+  const dataPath = join(vault, '.obsidian/plugins/subtext/data.json');
   // Obsidian may be mid-write when the file is read; an unparsable read counts as not saved yet.
   const data = async () => { try { return JSON.parse(await readFile(dataPath, 'utf8')); } catch { return {}; } };
   const saved = (field, value) => until(async () => (await data())[field] === value, 3000);
   const tab = page.locator('.modal.mod-settings .vertical-tab-content');
   const row = (name) => tab.locator('.setting-item').filter({ has: page.locator('.setting-item-name').getByText(name, { exact: true }) });
   const open = async () => {
-    await page.evaluate(() => { app.setting.open(); app.setting.openTabById('quick-math'); });
+    await page.evaluate(() => { app.setting.open(); app.setting.openTabById('subtext'); });
     await row('Convert with').waitFor();
   };
-  const result = () => tab.locator('.quick-math-test-result').innerText();
+  const result = () => tab.locator('.subtext-test-result').innerText();
 
   await open();
   const detected = await detectClaudePath();
@@ -69,8 +69,8 @@ export default async ({ page, vault, check, snap, until, wait, setTheme }) => {
   check(await until(async () => /^Error: .*invalid x-api-key/.test(await result()), 20000), 'Test shows the API error for a fake key', await result());
 
   await page.keyboard.press('Escape');
-  await page.evaluate(async () => { await app.plugins.disablePlugin('quick-math'); await app.plugins.enablePlugin('quick-math'); });
-  const reloaded = await page.evaluate(() => app.plugins.plugins['quick-math'].settings);
+  await page.evaluate(async () => { await app.plugins.disablePlugin('subtext'); await app.plugins.enablePlugin('subtext'); });
+  const reloaded = await page.evaluate(() => app.plugins.plugins['subtext'].settings);
   check(JSON.stringify(reloaded) === JSON.stringify({ backend: 'anthropic', model: 'claude-haiku-5-5', claudePath: detected, delimiter: ';;', apiKeySecret: KEY_ID }),
     'a reloaded plugin reads every saved field', reloaded);
   await open();

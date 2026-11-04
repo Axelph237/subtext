@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BACKENDS } from '../quickmath.mjs';
+import { BACKENDS } from '../subtext.mjs';
 import { runClaude } from '../node/claude-cli.mjs';
 
 // Stands in for the claude CLI. The stdin text picks the behavior, and argv is recorded next to the script.
@@ -37,7 +37,7 @@ let dir;
 let claudePath;
 
 before(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'quickmath-fake-claude-'));
+  dir = await mkdtemp(join(tmpdir(), 'subtext-fake-claude-'));
   claudePath = join(dir, 'claude');
   await writeFile(claudePath, FAKE_CLAUDE);
   await chmod(claudePath, 0o755);

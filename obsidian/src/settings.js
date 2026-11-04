@@ -1,5 +1,5 @@
 import { PluginSettingTab, SecretComponent, Setting } from 'obsidian';
-import { BACKENDS, DEFAULT_BACKEND, DEFAULT_MODEL, MODELS } from '../../core/quickmath.mjs';
+import { BACKENDS, DEFAULT_BACKEND, DEFAULT_MODEL, MODELS } from '../../core/subtext.mjs';
 import { detectClaudePath } from '../../core/node/claude-cli.mjs';
 
 // %% opens and closes an Obsidian comment, so the core default would never reach the plugin.
@@ -23,7 +23,7 @@ const BACKEND_SETTINGS = {
   'claude-code'(tab, containerEl) {
     new Setting(containerEl)
       .setName('Path to the claude CLI')
-      .setDesc('Leave empty to find it automatically. Quick Math uses your Claude Code login.')
+      .setDesc('Leave empty to find it automatically. SubTeXt uses your Claude Code login.')
       .addText((text) => {
         text.setValue(tab.plugin.settings.claudePath).onChange((value) => tab.plugin.updateSettings({ claudePath: value }));
         // Obsidian components have a then() method, so a callback must not return one into a promise chain.
@@ -41,7 +41,7 @@ const BACKEND_SETTINGS = {
   },
 };
 
-export class QuickMathSettingTab extends PluginSettingTab {
+export class SubTeXtSettingTab extends PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -104,6 +104,6 @@ export class QuickMathSettingTab extends PluginSettingTab {
         result.toggleClass('mod-warning', !outcome.ok);
         button.setDisabled(false);
       }));
-    const result = test.infoEl.createDiv({ cls: 'quick-math-test-result' });
+    const result = test.infoEl.createDiv({ cls: 'subtext-test-result' });
   }
 }

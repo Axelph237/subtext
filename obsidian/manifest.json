@@ -1,6 +1,6 @@
 {
-  "id": "quick-math",
-  "name": "Quick Math",
+  "id": "subtext",
+  "name": "SubTeXt",
   "version": "0.1.0",
   "minAppVersion": "1.11.4",
   "description": "Type ;; plain-language math ;; in a note and it turns into LaTeX math.",

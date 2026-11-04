@@ -1,13 +1,13 @@
 'use strict';
 
-var QuickMath = (() => {
-  const core = ChromeUtils.importESModule('chrome://quickmath/content/core/quickmath.mjs');
+var SubTeXt = (() => {
+  const core = ChromeUtils.importESModule('chrome://subtext/content/core/subtext.mjs');
   const { Subprocess } = ChromeUtils.importESModule('resource://gre/modules/Subprocess.sys.mjs');
   const { BACKENDS, DEFAULT_BACKEND, DEFAULT_MODEL, DEFAULT_DELIMITER, findTrigger } = core;
   Components.utils.importGlobalProperties(['fetch']);
 
-  const PREF = 'extensions.quickmath.';
-  const LOGIN_ORIGIN = 'chrome://quickmath';
+  const PREF = 'extensions.subtext.';
+  const LOGIN_ORIGIN = 'chrome://subtext';
   const LOGIN_REALM = 'Anthropic API key';
   const CLI_TIMEOUT_MS = 60000;
   const CLAUDE_CANDIDATES = ['~/.local/bin/claude', '/opt/homebrew/bin/claude', '/usr/local/bin/claude'];
@@ -74,7 +74,7 @@ var QuickMath = (() => {
       const path = stdout.trim().split('\n').pop();
       if (path?.startsWith('/') && await IOUtils.exists(path)) return path;
     } catch (e) {
-      Zotero.debug(`Quick Math: login shell lookup failed: ${e}`);
+      Zotero.debug(`SubTeXt: login shell lookup failed: ${e}`);
     }
     return '';
   }
@@ -82,7 +82,7 @@ var QuickMath = (() => {
   const TRANSPORTS = {
     async anthropic(backend, settings, input) {
       const apiKey = getApiKey();
-      if (!apiKey) return { ok: false, error: 'No Anthropic API key is set. Add one in Settings > Quick Math.' };
+      if (!apiKey) return { ok: false, error: 'No Anthropic API key is set. Add one in Settings > SubTeXt.' };
       const { url, init } = backend.buildRequest({ model: settings.model, apiKey }, input);
       let response;
       try {
@@ -101,7 +101,7 @@ var QuickMath = (() => {
 
     async 'claude-code'(backend, settings, input) {
       const command = settings.claudePath || await detectClaudePath();
-      if (!command) return { ok: false, error: 'Could not find the claude CLI. Set its path in Settings > Quick Math.' };
+      if (!command) return { ok: false, error: 'Could not find the claude CLI. Set its path in Settings > SubTeXt.' };
       let output;
       try {
         output = await run(command, backend.buildArgs({ model: settings.model }), backend.stdinFor(input));
@@ -197,7 +197,7 @@ var QuickMath = (() => {
     const coords = view.coordsAtPos(pos);
     const palette = doc.defaultView.matchMedia('(prefers-color-scheme: dark)').matches ? PILL_COLORS.dark : PILL_COLORS.light;
     const pill = doc.createElement('div');
-    pill.className = 'quickmath-pill';
+    pill.className = 'subtext-pill';
     pill.textContent = 'Converting to LaTeX';
     pill.style.cssText = [
       'position: fixed', `left: ${Math.round(coords.left)}px`, `top: ${Math.round(coords.bottom + 3)}px`,
@@ -213,7 +213,7 @@ var QuickMath = (() => {
 
   function showError(message) {
     const progress = new Zotero.ProgressWindow({ closeOnClick: true });
-    progress.changeHeadline('Quick Math could not convert');
+    progress.changeHeadline('SubTeXt could not convert');
     progress.addDescription(message);
     progress.show();
     progress.startCloseTimer(8000);
@@ -279,13 +279,13 @@ var QuickMath = (() => {
   }
 
   function startup() {
-    Zotero.QuickMath = { convert, detectClaudePath, getApiKey, setApiKey, core };
+    Zotero.SubTeXt = { convert, detectClaudePath, getApiKey, setApiKey, core };
   }
 
   function shutdown() {
     for (const win of [...listeners.keys()]) detach(win);
     for (const record of pending) release(record);
-    delete Zotero.QuickMath;
+    delete Zotero.SubTeXt;
   }
 
   return { startup, shutdown, attach, detach };

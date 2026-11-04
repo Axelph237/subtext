@@ -4,7 +4,7 @@ const fails = [];
 const check = (cond, msg, detail) => { if (!cond) fails.push(detail === undefined ? msg : msg + ' :: ' + JSON.stringify(detail)); };
 const wait = (ms) => Zotero.Promise.delay(ms);
 async function until(fn, ms = 5000) { const end = Date.now() + ms; while (Date.now() < end) { if (await fn()) return true; await wait(100); } return false; }
-const PREF = 'extensions.quickmath.';
+const PREF = 'extensions.subtext.';
 const setPref = (name, value) => Zotero.Prefs.set(PREF + name, value, true);
 const resetPrefs = () => { for (const n of ['backend', 'model', 'claudePath', 'delimiter']) Zotero.Prefs.clear(PREF + n, true); };
 
@@ -65,7 +65,7 @@ function nodesOfType(view, type) {
   visit(view.state.doc);
   return found;
 }
-const pills = (iwin) => iwin.document.querySelectorAll('.quickmath-pill').length;
+const pills = (iwin) => iwin.document.querySelectorAll('.subtext-pill').length;
 const docText = (view) => view.state.doc.textContent;
 async function savedHTML(item, pattern, ms = 8000) {
   await until(() => pattern.test(Zotero.Items.get(item.id).getNote()), ms);

@@ -5,10 +5,10 @@ set -u
 LIVE="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN="$(cd "$LIVE/../.." && pwd)"
 ZOTERO="${ZOTERO:-/Applications/Zotero.app/Contents/MacOS/zotero}"
-WORK="${1:-$(mktemp -d -t quickmath-live)}"
+WORK="${1:-$(mktemp -d -t subtext-live)}"
 mkdir -p "$WORK/profile/extensions" "$WORK/data" "$WORK/cmd"
-if [ -n "${XPI:-}" ]; then cp "$XPI" "$WORK/profile/extensions/quick-math@aidenking.xpi"; else echo -n "$PLUGIN" > "$WORK/profile/extensions/quick-math@aidenking"; fi
-echo -n "$LIVE/driver" > "$WORK/profile/extensions/qm-driver@local"
+if [ -n "${XPI:-}" ]; then cp "$XPI" "$WORK/profile/extensions/subtext@aidenking.xpi"; else echo -n "$PLUGIN" > "$WORK/profile/extensions/subtext@aidenking"; fi
+echo -n "$LIVE/driver" > "$WORK/profile/extensions/stx-driver@local"
 cat > "$WORK/profile/user.js" <<PREFS
 user_pref("extensions.zotero.dataDir", "$WORK/data");
 user_pref("extensions.zotero.useDataDir", true);
@@ -32,7 +32,7 @@ send() {
   echo '{"ok":false,"error":"timeout"}'
 }
 launch() {
-  QM_CMD_DIR="$WORK/cmd" nohup "$ZOTERO" -no-remote -headless -profile "$WORK/profile" > "$WORK/zotero.log" 2>&1 &
+  STX_CMD_DIR="$WORK/cmd" nohup "$ZOTERO" -no-remote -headless -profile "$WORK/profile" > "$WORK/zotero.log" 2>&1 &
   echo 'await Zotero.uiReadyPromise; win.resizeTo(1200, 800); await wait(1500); return { fails };' > "$WORK/ready.js"
   send "$WORK/ready.js" > /dev/null
 }

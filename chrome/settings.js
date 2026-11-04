@@ -1,4 +1,4 @@
-import { BACKENDS, DEFAULT_BACKEND, DEFAULT_DELIMITER, DEFAULT_MODEL } from './core/quickmath.mjs';
+import { BACKENDS, DEFAULT_BACKEND, DEFAULT_DELIMITER, DEFAULT_MODEL } from './core/subtext.mjs';
 
 const KEYS = ['backend', 'model', 'apiKey', 'claudePath', 'delimiter'];
 

@@ -17,8 +17,8 @@ const SELECTORS = {
   projectNameInput: '#project-name',
   createButton: '.modal-footer button:has-text("Create"), [role="dialog"] button:has-text("Create")',
   editor: '.cm-editor',
-  pendingMark: '.qm-pending',
-  errorMessage: '.qm-error',
+  pendingMark: '.stx-pending',
+  errorMessage: '.stx-error',
 };
 const DASHBOARD_URL = 'https://www.overleaf.com/project';
 const DASHBOARD_TIMEOUT_MS = 60000;
@@ -63,13 +63,13 @@ const context = await chromium.launchPersistentContext(PROFILE, {
 await context.addInitScript(() => {
   window.addEventListener('UNSTABLE_editor:extensions', (event) => {
     const { CodeMirror } = event.detail;
-    window.qmHook = { keys: Object.keys(CodeMirror ?? {}).sort(), EditorView: CodeMirror?.EditorView };
+    window.stxHook = { keys: Object.keys(CodeMirror ?? {}).sort(), EditorView: CodeMirror?.EditorView };
   });
 });
 
 const page = context.pages()[0] ?? await context.newPage();
 page.on('console', (message) => {
-  if (message.text().startsWith('Quick Math')) console.log(`[page] ${message.text()}`);
+  if (message.text().startsWith('SubTeXt')) console.log(`[page] ${message.text()}`);
 });
 
 let status = 0;
@@ -88,7 +88,7 @@ await page.waitForURL((url) => url.pathname === '/project', { timeout: DASHBOARD
 await page.locator(SELECTORS.newProjectButton).first().waitFor({ timeout: DASHBOARD_TIMEOUT_MS });
 console.log('signed in; dashboard is open');
 
-const projectName = `Quick Math scratch ${new Date().toISOString().replace(/[:.]/g, '-')}`;
+const projectName = `SubTeXt scratch ${new Date().toISOString().replace(/[:.]/g, '-')}`;
 await page.locator(SELECTORS.newProjectButton).first().click();
 await page.locator(SELECTORS.blankProjectItem).first().click();
 await page.locator(SELECTORS.projectNameInput).first().fill(projectName);
@@ -98,13 +98,13 @@ const projectId = page.url().match(/\/project\/([0-9a-f]{24})/)[1];
 console.log(`created "${projectName}" with project ID ${projectId}`);
 
 function editorText() {
-  return page.evaluate((selector) => window.qmHook.EditorView.findFromDOM(document.querySelector(selector)).state.doc.toString(), SELECTORS.editor);
+  return page.evaluate((selector) => window.stxHook.EditorView.findFromDOM(document.querySelector(selector)).state.doc.toString(), SELECTORS.editor);
 }
 
 async function waitForConversion(trigger) {
   try {
     await page.waitForFunction(({ editor, errorMessage, trigger }) => {
-      const view = window.qmHook.EditorView.findFromDOM(document.querySelector(editor));
+      const view = window.stxHook.EditorView.findFromDOM(document.querySelector(editor));
       return !view.state.doc.toString().includes(trigger) || document.querySelector(errorMessage);
     }, { ...SELECTORS, trigger }, { timeout: CONVERSION_TIMEOUT_MS });
   } catch {}
@@ -115,15 +115,15 @@ async function waitForConversion(trigger) {
 try {
   check(page.url().includes(projectId) && (await page.title()).includes(projectName), 'the open project is the one just created');
   await page.locator(SELECTORS.editor).first().waitFor({ timeout: 60000 });
-  await page.waitForFunction(() => window.qmHook?.EditorView, null, { timeout: 30000 });
-  const keys = await page.evaluate(() => window.qmHook.keys);
+  await page.waitForFunction(() => window.stxHook?.EditorView, null, { timeout: 30000 });
+  const keys = await page.evaluate(() => window.stxHook.keys);
   console.log(`Overleaf CodeMirror exports: ${keys.join(', ')}`);
   const missing = ['Decoration', 'EditorView', 'StateEffect', 'StateField', 'ViewPlugin', 'isolateHistory'].filter((name) => !keys.includes(name));
-  check(missing.length === 0, `the hook exports everything Quick Math uses${missing.length ? `; missing ${missing.join(', ')}` : ''}`);
+  check(missing.length === 0, `the hook exports everything SubTeXt uses${missing.length ? `; missing ${missing.join(', ')}` : ''}`);
 
   // Put the cursor at the start of the \end{document} line, then open a blank line above it.
   await page.evaluate((selector) => {
-    const view = window.qmHook.EditorView.findFromDOM(document.querySelector(selector));
+    const view = window.stxHook.EditorView.findFromDOM(document.querySelector(selector));
     const text = view.state.doc.toString();
     const at = text.lastIndexOf('\\end{document}');
     view.focus();

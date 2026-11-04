@@ -4,7 +4,7 @@ import { runClaude } from './core/node/claude-cli.mjs';
 async function handle(message) {
   const { input, model, claudePath } = message ?? {};
   if (typeof input !== 'string' || !input.trim() || typeof model !== 'string' || !model) {
-    return { ok: false, error: 'The Quick Math native host received a malformed request.' };
+    return { ok: false, error: 'The SubTeXt native host received a malformed request.' };
   }
   return runClaude(input, { model, claudePath: typeof claudePath === 'string' ? claudePath : '' });
 }

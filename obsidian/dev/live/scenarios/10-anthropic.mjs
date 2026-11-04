@@ -1,6 +1,6 @@
 export default async ({ page, check, reset, openNote, typeText, until, editorText, finished, notices }) => {
-  await page.evaluate(() => app.secretStorage.setSecret('quick-math-fake-key', 'sk-ant-fake-key'));
-  await reset(page, { backend: 'anthropic', apiKeySecret: 'quick-math-fake-key' });
+  await page.evaluate(() => app.secretStorage.setSecret('subtext-fake-key', 'sk-ant-fake-key'));
+  await reset(page, { backend: 'anthropic', apiKeySecret: 'subtext-fake-key' });
   await openNote(page, 'Anthropic.md', '');
   await typeText(page, 'Key ;; x squared ;;');
   check(await until(async () => await finished(page) === 1, 20000), 'the API request finishes');

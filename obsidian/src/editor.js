@@ -1,7 +1,7 @@
 import { isolateHistory } from '@codemirror/commands';
 import { StateEffect, StateField } from '@codemirror/state';
 import { Decoration, EditorView } from '@codemirror/view';
-import { FORMATS, findTrigger } from '../../core/quickmath.mjs';
+import { FORMATS, findTrigger } from '../../core/subtext.mjs';
 
 // Each pending conversion is one mark decoration whose spec carries { id, text }.
 // Mapping the set through every change keeps each range on its trigger text while the user types.
@@ -15,7 +15,7 @@ const pendingField = StateField.define({
     for (const effect of tr.effects) {
       if (effect.is(addPending)) {
         const { id, from, to, text } = effect.value;
-        const mark = Decoration.mark({ class: 'quick-math-pending', attributes: { title: 'Converting to LaTeX' }, id, text });
+        const mark = Decoration.mark({ class: 'subtext-pending', attributes: { title: 'Converting to LaTeX' }, id, text });
         marks = marks.update({ add: [mark.range(from, to)] });
       } else if (effect.is(removePending)) {
         marks = marks.update({ filter: (from, to, mark) => mark.spec.id !== effect.value });
@@ -81,7 +81,7 @@ async function convertTrigger(view, { delimiter, convert, notify }) {
   });
 }
 
-export function quickMathExtension(options) {
+export function subtextExtension(options) {
   return [
     pendingField,
     EditorView.updateListener.of((update) => {

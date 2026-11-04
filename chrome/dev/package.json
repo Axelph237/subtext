@@ -1,8 +1,8 @@
 {
-  "name": "quick-math-chrome-dev",
+  "name": "subtext-chrome-dev",
   "private": true,
   "type": "module",
-  "description": "Build and live-test tools for the Quick Math Chrome extension. Not shipped.",
+  "description": "Build and live-test tools for the SubTeXt Chrome extension. Not shipped.",
   "devDependencies": {
     "@codemirror/commands": "^6.11.1",
     "@codemirror/language": "^6.13.1",

@@ -1,6 +1,6 @@
 'use strict';
 
-const SCRIPTS = ['src/quickmath.js'];
+const SCRIPTS = ['src/subtext.js'];
 const PREFS = ['backend', 'model', 'claudePath', 'delimiter'];
 
 var chromeHandle = null;
@@ -9,8 +9,8 @@ function install() {}
 
 function uninstall(data, reason) {
   if (reason !== ADDON_UNINSTALL) return;
-  for (const name of PREFS) Zotero.Prefs.clear(`extensions.quickmath.${name}`, true);
-  for (const login of Services.logins.findLogins('chrome://quickmath', null, 'Anthropic API key')) {
+  for (const name of PREFS) Zotero.Prefs.clear(`extensions.subtext.${name}`, true);
+  for (const login of Services.logins.findLogins('chrome://subtext', null, 'Anthropic API key')) {
     Services.logins.removeLogin(login);
   }
 }
@@ -20,32 +20,32 @@ function startup({ id, rootURI }) {
     .getService(Components.interfaces.amIAddonManagerStartup);
   chromeHandle = aomStartup.registerChrome(
     Services.io.newURI(`${rootURI}manifest.json`),
-    [['content', 'quickmath', rootURI]],
+    [['content', 'subtext', rootURI]],
   );
   for (const script of SCRIPTS) {
     Services.scriptloader.loadSubScriptWithOptions(rootURI + script, { target: globalThis, ignoreCache: true });
   }
-  QuickMath.startup();
+  SubTeXt.startup();
   Zotero.PreferencePanes.register({
     pluginID: id,
     src: rootURI + 'prefs.xhtml',
     scripts: [rootURI + 'src/prefs-pane.js'],
-    id: 'quickmath-prefpane',
-    label: 'Quick Math',
+    id: 'subtext-prefpane',
+    label: 'SubTeXt',
   });
-  for (const window of Zotero.getMainWindows()) QuickMath.attach(window);
+  for (const window of Zotero.getMainWindows()) SubTeXt.attach(window);
 }
 
 function onMainWindowLoad({ window }) {
-  QuickMath.attach(window);
+  SubTeXt.attach(window);
 }
 
 function onMainWindowUnload({ window }) {
-  QuickMath.detach(window);
+  SubTeXt.detach(window);
 }
 
 function shutdown() {
-  QuickMath.shutdown();
+  SubTeXt.shutdown();
   chromeHandle?.destruct();
   chromeHandle = null;
 }

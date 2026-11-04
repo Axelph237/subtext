@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { findTrigger, cleanLatex, BACKENDS, FORMATS, SYSTEM_PROMPT, MODELS, DEFAULT_MODEL } from '../quickmath.mjs';
+import { findTrigger, cleanLatex, BACKENDS, FORMATS, SYSTEM_PROMPT, MODELS, DEFAULT_MODEL } from '../subtext.mjs';
 
 test('findTrigger returns the trigger when the closing delimiter is at the cursor', () => {
   assert.deepEqual(findTrigger('%% x squared %%'), { start: 0, end: 15, input: 'x squared' });

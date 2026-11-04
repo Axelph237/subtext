@@ -44,17 +44,17 @@ function freePort() {
 }
 
 async function writeVault(vault, pluginFiles) {
-  const plugin = join(vault, '.obsidian/plugins/quick-math');
+  const plugin = join(vault, '.obsidian/plugins/subtext');
   await mkdir(plugin, { recursive: true });
   // Link each file rather than the directory, so the plugin's data.json lands in the scratch vault.
   for (const name of ['main.js', 'manifest.json', 'styles.css']) await symlink(join(pluginFiles, name), join(plugin, name));
-  await writeFile(join(vault, '.obsidian/community-plugins.json'), JSON.stringify(['quick-math']));
+  await writeFile(join(vault, '.obsidian/community-plugins.json'), JSON.stringify(['subtext']));
   // Obsidian 1.13 opens Settings in its own window by default. A hidden popout stops painting, which stalls
   // screenshots and CDP attach, and it takes over activeWindow, where notices appear. Keep Settings a modal.
   await writeFile(join(vault, '.obsidian/app.json'), JSON.stringify({ settingsPopoutWindow: false }));
 }
 
-export async function launch({ work, pluginFiles = PLUGIN_DIR, cacheDir = process.env.QM_CACHE || join(tmpdir(), 'quick-math-obsidian-cache') }) {
+export async function launch({ work, pluginFiles = PLUGIN_DIR, cacheDir = process.env.STX_CACHE || join(tmpdir(), 'subtext-obsidian-cache') }) {
   const userData = join(work, 'user-data');
   const vault = join(work, 'vault');
   await mkdir(userData, { recursive: true });
@@ -107,7 +107,7 @@ export async function trustVault(page) {
   const modal = page.locator('.modal.mod-trust-folder');
   await modal.waitFor({ timeout: 15000 });
   await modal.locator('button:not(.mod-cancel)').click();
-  await page.waitForFunction(() => window.app.plugins.plugins['quick-math'], null, { timeout: 15000 });
+  await page.waitForFunction(() => window.app.plugins.plugins['subtext'], null, { timeout: 15000 });
   await page.locator('.modal.mod-settings').waitFor();
   await page.keyboard.press('Escape');
   await page.locator('.modal.mod-settings').waitFor({ state: 'detached' });

@@ -14,16 +14,16 @@ export async function until(fn, timeout = 30000, step = 100) {
 
 export async function reset(page, patch = {}) {
   await page.evaluate(async (settings) => {
-    const plugin = app.plugins.plugins['quick-math'];
+    const plugin = app.plugins.plugins['subtext'];
     await plugin.updateSettings(settings);
     for (const notice of document.querySelectorAll('.notice')) notice.click();
     app.changeTheme('moonstone');
-    window.qmFinished = 0;
+    window.stxFinished = 0;
     if (!plugin.convert.instrumented) {
       const convert = plugin.convert;
       plugin.convert = async (input) => {
         const result = await convert.call(plugin, input);
-        window.qmFinished++;
+        window.stxFinished++;
         return result;
       };
       plugin.convert.instrumented = true;
@@ -44,8 +44,8 @@ export async function openNote(page, name, content) {
 
 export const typeText = (page, text) => page.keyboard.type(text, { delay: 15 });
 export const editorText = (page) => page.evaluate(() => app.workspace.activeEditor.editor.getValue());
-export const pendingMarks = (page) => page.evaluate(() => document.querySelectorAll('.quick-math-pending').length);
-export const finished = (page) => page.evaluate(() => window.qmFinished);
+export const pendingMarks = (page) => page.evaluate(() => document.querySelectorAll('.subtext-pending').length);
+export const finished = (page) => page.evaluate(() => window.stxFinished);
 export const notices = (page) => page.evaluate(() => [...document.querySelectorAll('.notice')].map((n) => n.innerText));
 export const setTheme = (page, theme) => page.evaluate((t) => app.changeTheme(t), theme);
 

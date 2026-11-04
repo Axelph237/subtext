@@ -1,13 +1,13 @@
 const { AddonManager } = ChromeUtils.importESModule('resource://gre/modules/AddonManager.sys.mjs');
 setPref('delimiter', ';;');
 setPref('model', 'claude-sonnet-5-5');
-await Zotero.QuickMath.setApiKey('sk-ant-uninstall-check');
-const logins = () => Services.logins.findLogins('chrome://quickmath', null, 'Anthropic API key').length;
+await Zotero.SubTeXt.setApiKey('sk-ant-uninstall-check');
+const logins = () => Services.logins.findLogins('chrome://subtext', null, 'Anthropic API key').length;
 check(logins() === 1, 'API key is saved before uninstall');
-const addon = await AddonManager.getAddonByID('quick-math@aidenking');
+const addon = await AddonManager.getAddonByID('subtext@aidenking');
 await addon.uninstall();
 await wait(1000);
-check(!Zotero.QuickMath, 'Zotero.QuickMath is removed');
+check(!Zotero.SubTeXt, 'Zotero.SubTeXt is removed');
 const userPrefs = ['backend', 'model', 'claudePath', 'delimiter'].filter((n) => Services.prefs.prefHasUserValue(PREF + n));
 check(userPrefs.length === 0, 'uninstall clears the plugin prefs', userPrefs);
 check(logins() === 0, 'uninstall removes the saved API key', logins());

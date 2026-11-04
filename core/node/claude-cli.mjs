@@ -2,10 +2,10 @@ import { execFile, spawn } from 'node:child_process';
 import { access, constants } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BACKENDS } from '../quickmath.mjs';
+import { BACKENDS } from '../subtext.mjs';
 
 const TIMEOUT_MS = 60000;
-const MISSING = 'Could not find the claude CLI. Set its path in the Quick Math settings.';
+const MISSING = 'Could not find the claude CLI. Set its path in the SubTeXt settings.';
 
 async function isExecutable(path) {
   try {

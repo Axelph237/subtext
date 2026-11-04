@@ -1,41 +1,41 @@
-<vbox id="quickmath-pane" onload="QuickMathPane.init()">
+<vbox id="subtext-pane" onload="SubTeXtPane.init()">
   <groupbox>
     <label><html:h2>Conversion</html:h2></label>
-    <label control="quickmath-backend" value="Convert with"/>
-    <radiogroup id="quickmath-backend"/>
+    <label control="subtext-backend" value="Convert with"/>
+    <radiogroup id="subtext-backend"/>
     <hbox align="center">
-      <label control="quickmath-model" value="Model"/>
-      <menulist id="quickmath-model">
-        <menupopup id="quickmath-model-popup"/>
+      <label control="subtext-model" value="Model"/>
+      <menulist id="subtext-model">
+        <menupopup id="subtext-model-popup"/>
       </menulist>
-      <html:input id="quickmath-model-custom" type="text" placeholder="model id" hidden="true"/>
+      <html:input id="subtext-model-custom" type="text" placeholder="model id" hidden="true"/>
     </hbox>
   </groupbox>
   <groupbox data-backend="anthropic">
     <label><html:h2>Anthropic API key</html:h2></label>
-    <html:input id="quickmath-api-key" type="password" placeholder="sk-ant-..." style="width: 28em"/>
+    <html:input id="subtext-api-key" type="password" placeholder="sk-ant-..." style="width: 28em"/>
     <description>The key is stored in the Zotero password manager, not in your preferences file.</description>
   </groupbox>
   <groupbox data-backend="claude-code">
     <label><html:h2>Claude Code</html:h2></label>
-    <label control="quickmath-claude-path" value="Path to the claude CLI"/>
-    <html:input id="quickmath-claude-path" type="text" preference="extensions.quickmath.claudePath" style="width: 28em"/>
-    <description>Leave empty to find it automatically. Quick Math uses your Claude Code login.</description>
+    <label control="subtext-claude-path" value="Path to the claude CLI"/>
+    <html:input id="subtext-claude-path" type="text" preference="extensions.subtext.claudePath" style="width: 28em"/>
+    <description>Leave empty to find it automatically. SubTeXt uses your Claude Code login.</description>
   </groupbox>
   <groupbox>
     <label><html:h2>Trigger</html:h2></label>
     <hbox align="center">
-      <label control="quickmath-delimiter" value="Delimiter"/>
-      <html:input id="quickmath-delimiter" type="text" preference="extensions.quickmath.delimiter" style="width: 5em"/>
+      <label control="subtext-delimiter" value="Delimiter"/>
+      <html:input id="subtext-delimiter" type="text" preference="extensions.subtext.delimiter" style="width: 5em"/>
     </hbox>
-    <description id="quickmath-delimiter-hint"/>
+    <description id="subtext-delimiter-hint"/>
   </groupbox>
   <groupbox>
     <label><html:h2>Test</html:h2></label>
     <hbox align="center">
-      <html:input id="quickmath-test-input" type="text" value="integral from 0 to infinity of e to the minus x squared" style="width: 28em"/>
-      <button id="quickmath-test" label="Test"/>
+      <html:input id="subtext-test-input" type="text" value="integral from 0 to infinity of e to the minus x squared" style="width: 28em"/>
+      <button id="subtext-test" label="Test"/>
     </hbox>
-    <description id="quickmath-test-result" style="user-select: text"/>
+    <description id="subtext-test-result" style="user-select: text"/>
   </groupbox>
 </vbox>

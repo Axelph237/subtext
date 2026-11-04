@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Quick Math for Overleaf",
+  "name": "SubTeXt for Overleaf",
   "version": "0.1.0",
   "description": "Type %% plain-language math %% in Overleaf and it becomes LaTeX.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlEsct+4UfnMrh0WZuRHerb4LZW3Jy2gNXbPdw7otxQCx1p2MZb31T7cQfF9S5Lb3ZFJxnzP7nWK61Oe44+lcEqaVm607Fkjs7xt2+gPD/Oq6BbEoT9GQo4hH5ltYSxVA3sezb+szx/CvVEM3w0cYwue7OWHSTS8owZP3cRkZd32sylbRMt4dkIbyhHcIV4N7JkpIzMzaieCRPXv74hibBKUBriCk1nwLQH/bGs2tB2CXmoLYjJsemUW7UlfLWo7Lu7C+rVIge36kZDlLf4b0KdiNu25++wUUtG1SeDhKn/Bd6ZD3TzxszwujDGZkSGq94WNf57PQzFWM80VrpfpKAQIDAQAB",

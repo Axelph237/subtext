@@ -1,4 +1,4 @@
-import { BACKENDS, DEFAULT_DELIMITER, DEFAULT_MODEL, MODELS } from './core/quickmath.mjs';
+import { BACKENDS, DEFAULT_DELIMITER, DEFAULT_MODEL, MODELS } from './core/subtext.mjs';
 import { TAG } from './protocol.js';
 import { loadSettings } from './settings.js';
 

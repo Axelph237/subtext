@@ -1,5 +1,5 @@
 // Runs in the page's MAIN world, where Overleaf's editor hook fires. build.sh bundles this file with core.
-import { DEFAULT_DELIMITER, FORMATS, findTrigger } from './core/quickmath.mjs';
+import { DEFAULT_DELIMITER, FORMATS, findTrigger } from './core/subtext.mjs';
 import { TAG } from './protocol.js';
 
 const REQUIRED_EXPORTS = ['Decoration', 'EditorView', 'StateEffect', 'StateField', 'ViewPlugin', 'isolateHistory'];
@@ -60,9 +60,9 @@ function isDark(view) {
 
 function showError(view, pos, message) {
   const note = document.createElement('div');
-  note.className = 'qm-error';
+  note.className = 'stx-error';
   note.setAttribute('role', 'alert');
-  note.textContent = `Quick Math: ${message}`;
+  note.textContent = `SubTeXt: ${message}`;
   view.scrollDOM.append(note);
   view.requestMeasure({
     read: () => ({ at: view.coordsAtPos(pos), box: view.scrollDOM.getBoundingClientRect(), dark: isDark(view) }),
@@ -70,23 +70,23 @@ function showError(view, pos, message) {
       const { scrollLeft, scrollTop } = view.scrollDOM;
       note.style.left = `${(at ? at.left - box.left : 8) + scrollLeft}px`;
       note.style.top = `${(at ? at.bottom - box.top + 4 : 8) + scrollTop}px`;
-      note.classList.toggle('qm-dark', dark);
+      note.classList.toggle('stx-dark', dark);
     },
   });
   setTimeout(() => note.remove(), ERROR_MS);
 }
 
-function quickMath(CodeMirror) {
+function subtext(CodeMirror) {
   const missing = REQUIRED_EXPORTS.filter((name) => !CodeMirror?.[name]);
   if (missing.length) {
-    console.warn(`Quick Math is off: Overleaf's editor hook does not export ${missing.join(', ')}.`);
+    console.warn(`SubTeXt is off: Overleaf's editor hook does not export ${missing.join(', ')}.`);
     return [];
   }
   const { Decoration, EditorView, StateEffect, StateField, ViewPlugin, isolateHistory } = CodeMirror;
 
   const addPending = StateEffect.define({ map: (entry, changes) => mapEntry(entry, changes) ?? undefined });
   const removePending = StateEffect.define();
-  const pendingMark = Decoration.mark({ class: 'qm-pending', attributes: { title: 'Quick Math is converting this to LaTeX' } });
+  const pendingMark = Decoration.mark({ class: 'stx-pending', attributes: { title: 'SubTeXt is converting this to LaTeX' } });
 
   // Each entry is one conversion in flight: { id, from, to }, mapped through every change.
   const pending = StateField.define({
@@ -109,7 +109,7 @@ function quickMath(CodeMirror) {
       changes: { from, to, insert: FORMATS.latex[alone ? 'display' : 'inline'](latex) },
       effects: removePending.of(id),
       annotations: isolateHistory.of('full'),
-      userEvent: 'input.quickmath',
+      userEvent: 'input.subtext',
     };
   }
 
@@ -147,16 +147,16 @@ function quickMath(CodeMirror) {
   });
 
   const theme = EditorView.baseTheme({
-    '.qm-pending': {
+    '.stx-pending': {
       backgroundColor: 'rgba(56, 132, 255, 0.2)',
       borderBottom: '2px dotted rgb(56, 132, 255)',
-      animation: 'qm-pulse 0.9s ease-in-out infinite alternate',
+      animation: 'stx-pulse 0.9s ease-in-out infinite alternate',
     },
-    '@keyframes qm-pulse': {
+    '@keyframes stx-pulse': {
       from: { backgroundColor: 'rgba(56, 132, 255, 0.12)' },
       to: { backgroundColor: 'rgba(56, 132, 255, 0.34)' },
     },
-    '.qm-error': {
+    '.stx-error': {
       position: 'absolute',
       zIndex: 10,
       maxWidth: 'min(44em, 80%)',
@@ -170,7 +170,7 @@ function quickMath(CodeMirror) {
       border: '1px solid #f0b4ad',
       boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
     },
-    '.qm-error.qm-dark': {
+    '.stx-error.stx-dark': {
       color: '#ffd2cc',
       backgroundColor: '#4a2220',
       border: '1px solid #7d3a35',
@@ -186,9 +186,9 @@ let extension = null;
 window.addEventListener('UNSTABLE_editor:extensions', (event) => {
   const { CodeMirror, extensions } = event.detail;
   if (!extension) {
-    console.debug('Quick Math: CodeMirror exports from Overleaf:', Object.keys(CodeMirror ?? {}).sort().join(', '));
+    console.debug('SubTeXt: CodeMirror exports from Overleaf:', Object.keys(CodeMirror ?? {}).sort().join(', '));
     // Built once, so Overleaf's later re-dispatches reconfigure with the same field and keep pending conversions.
-    extension = quickMath(CodeMirror);
+    extension = subtext(CodeMirror);
     send('settings', {}, (result) => {
       if (typeof result?.delimiter === 'string') delimiter = result.delimiter;
     });
@@ -198,6 +198,6 @@ window.addEventListener('UNSTABLE_editor:extensions', (event) => {
 
 window.addEventListener('load', () => {
   setTimeout(() => {
-    if (!extension) console.info('Quick Math is off: Overleaf never fired its editor hook, UNSTABLE_editor:extensions.');
+    if (!extension) console.info('SubTeXt is off: Overleaf never fired its editor hook, UNSTABLE_editor:extensions.');
   }, HOOK_GRACE_MS);
 }, { once: true });

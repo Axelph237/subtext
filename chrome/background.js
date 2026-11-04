@@ -1,13 +1,13 @@
-import { BACKENDS } from './core/quickmath.mjs';
+import { BACKENDS } from './core/subtext.mjs';
 import { TAG } from './protocol.js';
 import { loadSettings } from './settings.js';
 
-const NATIVE_HOST = 'com.aidenking.quickmath';
-const NO_HOST = 'The Quick Math native host is not installed. Run chrome/native-host/install.sh from the Quick Math folder.';
+const NATIVE_HOST = 'com.aidenking.subtext';
+const NO_HOST = 'The SubTeXt native host is not installed. Run chrome/native-host/install.sh from the SubTeXt folder.';
 
 const TRANSPORTS = {
   async anthropic(backend, settings, input) {
-    if (!settings.apiKey) return { ok: false, error: 'No Anthropic API key is set. Add one in the Quick Math options.' };
+    if (!settings.apiKey) return { ok: false, error: 'No Anthropic API key is set. Add one in the SubTeXt options.' };
     const { url, init } = backend.buildRequest({ model: settings.model, apiKey: settings.apiKey }, input);
     let response;
     try {
@@ -29,9 +29,9 @@ const TRANSPORTS = {
     try {
       result = await chrome.runtime.sendNativeMessage(NATIVE_HOST, { input, model: settings.model, claudePath: settings.claudePath });
     } catch (e) {
-      return { ok: false, error: /not found/i.test(e.message) ? NO_HOST : `The Quick Math native host failed: ${e.message}` };
+      return { ok: false, error: /not found/i.test(e.message) ? NO_HOST : `The SubTeXt native host failed: ${e.message}` };
     }
-    return typeof result?.ok === 'boolean' ? result : { ok: false, error: 'The Quick Math native host sent an unexpected reply.' };
+    return typeof result?.ok === 'boolean' ? result : { ok: false, error: 'The SubTeXt native host sent an unexpected reply.' };
   },
 };
 

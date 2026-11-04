@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path';
 import { PLUGIN_DIR, launch, trustVault } from './obsidian.mjs';
 import * as lib from './lib.mjs';
 
-const work = resolve(process.argv[2] || await mkdtemp(join(tmpdir(), 'quickmath-obsidian-')));
+const work = resolve(process.argv[2] || await mkdtemp(join(tmpdir(), 'subtext-obsidian-')));
 execFileSync(process.execPath, [join(PLUGIN_DIR, 'esbuild.mjs')], { stdio: 'ignore' });
 
 const scenarioDir = join(PLUGIN_DIR, 'dev/live/scenarios');

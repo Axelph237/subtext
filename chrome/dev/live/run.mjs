@@ -13,11 +13,11 @@ import { chromium } from 'playwright';
 const LIVE = dirname(fileURLToPath(import.meta.url));
 const CHROME = resolve(LIVE, '../..');
 const EXTENSION = join(CHROME, 'build/extension');
-const WORK = resolve(process.argv[2] ?? mkdtempSync(join(tmpdir(), 'quickmath-chrome-')));
+const WORK = resolve(process.argv[2] ?? mkdtempSync(join(tmpdir(), 'subtext-chrome-')));
 const PROFILE = join(WORK, 'profile');
 const SHOTS = join(WORK, 'shots');
 const PROJECT_URL = 'https://www.overleaf.com/project/fixture';
-const TAG = 'quick-math';
+const TAG = 'subtext';
 const ONLY = process.env.ONLY?.split(/\s+/).filter(Boolean);
 
 function extensionIdFromKey() {
@@ -68,14 +68,14 @@ async function openEditor(theme = 'light') {
   const consoleLines = [];
   page.on('console', (message) => consoleLines.push(message.text()));
   await page.addInitScript((tag) => {
-    window.qmResults = [];
+    window.stxResults = [];
     window.addEventListener('message', (event) => {
-      if (event.data?.tag === tag && typeof event.data.result?.ok === 'boolean') window.qmResults.push(event.data.result);
+      if (event.data?.tag === tag && typeof event.data.result?.ok === 'boolean') window.stxResults.push(event.data.result);
     });
   }, TAG);
   await page.goto(`${PROJECT_URL}?theme=${theme}`);
   await page.waitForFunction(() => window.fixtureView);
-  const exportsLine = consoleLines.find((line) => line.startsWith('Quick Math: CodeMirror exports'));
+  const exportsLine = consoleLines.find((line) => line.startsWith('SubTeXt: CodeMirror exports'));
   if (exportsLine && !printedExports) {
     console.log(exportsLine);
     printedExports = true;
@@ -86,7 +86,7 @@ async function openEditor(theme = 'light') {
 
 const line = (page, n) => page.evaluate((n) => window.fixtureView.state.doc.line(n).text, n);
 const doc = (page) => page.evaluate(() => window.fixtureView.state.doc.toString());
-const resultCount = (page) => page.evaluate(() => window.qmResults.length);
+const resultCount = (page) => page.evaluate(() => window.stxResults.length);
 const shot = (page, name) => page.screenshot({ path: join(SHOTS, `${name}.png`) });
 
 async function endOfLine(page, n) {
@@ -98,7 +98,7 @@ async function endOfLine(page, n) {
 }
 
 async function settle(page, count = 1) {
-  await page.waitForFunction((count) => window.qmResults.length >= count, count, { timeout: 90000 });
+  await page.waitForFunction((count) => window.stxResults.length >= count, count, { timeout: 90000 });
   await page.waitForTimeout(250);
 }
 
@@ -127,13 +127,13 @@ scenario('inline', async (expect) => {
   expect(page.hooked, 'overleaf.js received the UNSTABLE_editor:extensions hook');
   await endOfLine(page, 4);
   await page.keyboard.type(' The sum %% sum i=1 to n of i squared %%');
-  await page.waitForSelector('.qm-pending', { timeout: 5000 });
-  expect(await page.textContent('.qm-pending') === '%% sum i=1 to n of i squared %%', 'the pending mark covers exactly the trigger');
+  await page.waitForSelector('.stx-pending', { timeout: 5000 });
+  expect(await page.textContent('.stx-pending') === '%% sum i=1 to n of i squared %%', 'the pending mark covers exactly the trigger');
   await shot(page, 'pending-light');
   await settle(page);
   const text = await line(page, 4);
   expect(text.startsWith('Intro line. The sum $\\sum_{i=1}^{n}') && /i\^\{?2\}?\$$/.test(text), `line 4 holds inline math: ${text}`);
-  expect(await page.locator('.qm-pending').count() === 0, 'the pending mark is gone');
+  expect(await page.locator('.stx-pending').count() === 0, 'the pending mark is gone');
   const cursorAtEnd = await page.evaluate(() => window.fixtureView.state.selection.main.head === window.fixtureView.state.doc.line(4).to);
   expect(cursorAtEnd, 'the cursor sits after the math');
   await shot(page, 'inline-done-light');
@@ -144,7 +144,7 @@ scenario('display', async (expect) => {
   const page = await openEditor('dark');
   await endOfLine(page, 3);
   await page.keyboard.type('%% x squared plus y squared %%');
-  await page.waitForSelector('.qm-pending', { timeout: 5000 });
+  await page.waitForSelector('.stx-pending', { timeout: 5000 });
   await shot(page, 'pending-dark');
   await settle(page);
   const lines = [await line(page, 3), await line(page, 4), await line(page, 5)];
@@ -178,12 +178,12 @@ scenario('delete-while-pending', async (expect) => {
   await endOfLine(page, 4);
   const typed = ' %% alpha squared %%';
   await page.keyboard.type(typed);
-  await page.waitForSelector('.qm-pending', { timeout: 5000 });
+  await page.waitForSelector('.stx-pending', { timeout: 5000 });
   for (let i = 0; i < typed.length; i++) await page.keyboard.press('Backspace');
   expect(await resultCount(page) === 0, 'the trigger was deleted before the result came back');
   await settle(page);
   expect(await doc(page) === ORIGINAL, 'the document is exactly as before, with no stray text');
-  expect(await page.locator('.qm-pending, .qm-error').count() === 0, 'no pending mark or error remains');
+  expect(await page.locator('.stx-pending, .stx-error').count() === 0, 'no pending mark or error remains');
 });
 
 scenario('edit-inside-while-pending', async (expect) => {
@@ -211,7 +211,7 @@ scenario('undo', async (expect) => {
   await page.keyboard.press('ControlOrMeta+z');
   expect(await line(page, 4) === 'Intro line. %% x cubed %%', `one undo restores the raw text: ${await line(page, 4)}`);
   await page.waitForTimeout(1500);
-  expect(await page.locator('.qm-pending').count() === 0 && await resultCount(page) === 1, 'undo does not start a new conversion');
+  expect(await page.locator('.stx-pending').count() === 0 && await resultCount(page) === 1, 'undo does not start a new conversion');
 });
 
 scenario('bad-claude-path', async (expect) => {
@@ -221,7 +221,7 @@ scenario('bad-claude-path', async (expect) => {
     await endOfLine(page, 4);
     await page.keyboard.type(' %% x squared %%');
     await settle(page);
-    const error = page.locator('.qm-error');
+    const error = page.locator('.stx-error');
     expect(await error.isVisible(), `${theme}: the error message shows in the editor`);
     expect(/Could not find the claude CLI/.test(await error.textContent()), `${theme}: it names the problem: ${await error.textContent()}`);
     expect(await line(page, 4) === 'Intro line. %% x squared %%', `${theme}: the text is unchanged`);
@@ -241,7 +241,7 @@ scenario('custom-delimiter', async (expect) => {
   await endOfLine(page, 4);
   await page.keyboard.type(' %% y %%');
   await page.waitForTimeout(1000);
-  expect(await page.locator('.qm-pending').count() === 0, 'the old delimiter no longer triggers, without a reload');
+  expect(await page.locator('.stx-pending').count() === 0, 'the old delimiter no longer triggers, without a reload');
   await page.keyboard.type(' ;; alpha plus beta ;;');
   await settle(page);
   const text = await line(page, 4);
@@ -296,12 +296,12 @@ scenario('options-page', async (expect) => {
 });
 
 scenario('anthropic-bad-key', async (expect) => {
-  await useSettings({ backend: 'anthropic', apiKey: 'sk-ant-quickmath-fake-key' });
+  await useSettings({ backend: 'anthropic', apiKey: 'sk-ant-subtext-fake-key' });
   const page = await openEditor();
   await endOfLine(page, 4);
   await page.keyboard.type(' %% x squared %%');
   await settle(page);
-  const error = page.locator('.qm-error');
+  const error = page.locator('.stx-error');
   const message = await error.textContent();
   expect(await error.isVisible() && /invalid x-api-key/.test(message), `the API error shows in the editor: ${message}`);
   expect(await line(page, 4) === 'Intro line. %% x squared %%', 'the text is unchanged');

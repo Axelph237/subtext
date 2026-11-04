@@ -1,11 +1,11 @@
 #!/bin/sh
-# Registers the Quick Math native messaging host, which runs the claude CLI for the extension.
+# Registers the SubTeXt native messaging host, which runs the claude CLI for the extension.
 #   install.sh                       Chrome and Brave, for the current macOS user
 #   install.sh --user-data-dir DIR   a browser started with --user-data-dir DIR
-# Run it again after updating Quick Math.
+# Run it again after updating SubTeXt.
 set -eu
 HERE="$(cd "$(dirname "$0")" && pwd)"
-NAME=com.aidenking.quickmath
+NAME=com.aidenking.subtext
 NODE="$(command -v node)" || { echo "install.sh: node is not on PATH" >&2; exit 1; }
 
 # The extension ID is derived from the manifest key: the first 128 bits of SHA-256 over the key, as hex digits a-p.
@@ -23,16 +23,16 @@ install_into() {
   rm -rf "$target"
   mkdir -p "$target/core/node"
   cp "$HERE/host.mjs" "$target/"
-  cp "$HERE/core/quickmath.mjs" "$target/core/"
+  cp "$HERE/core/subtext.mjs" "$target/core/"
   cp "$HERE/core/node/claude-cli.mjs" "$target/core/node/"
   # Browsers start hosts without the shell PATH, so the wrapper names node by absolute path.
-  printf '#!/bin/sh\nexec "%s" "%s" "$@"\n' "$NODE" "$target/host.mjs" > "$target/quickmath-host"
-  chmod +x "$target/quickmath-host"
+  printf '#!/bin/sh\nexec "%s" "%s" "$@"\n' "$NODE" "$target/host.mjs" > "$target/subtext-host"
+  chmod +x "$target/subtext-host"
   "$NODE" -e '
 const [file, name, path, origin] = process.argv.slice(1);
-const manifest = { name, description: "Runs the claude CLI for the Quick Math extension", path, type: "stdio", allowed_origins: [origin] };
+const manifest = { name, description: "Runs the claude CLI for the SubTeXt extension", path, type: "stdio", allowed_origins: [origin] };
 require("fs").writeFileSync(file, JSON.stringify(manifest, null, 2) + "\n");
-' "$hosts/$NAME.json" "$NAME" "$target/quickmath-host" "$ORIGIN"
+' "$hosts/$NAME.json" "$NAME" "$target/subtext-host" "$ORIGIN"
   echo "installed $hosts/$NAME.json for $ORIGIN"
 }
 

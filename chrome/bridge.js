@@ -10,7 +10,7 @@ async function forward(request) {
   try {
     result = await chrome.runtime.sendMessage(request);
   } catch (error) {
-    result = { ok: false, error: `Quick Math is unavailable (${error.message}). Reload the page.` };
+    result = { ok: false, error: `SubTeXt is unavailable (${error.message}). Reload the page.` };
   }
   reply(request.id, result);
 }

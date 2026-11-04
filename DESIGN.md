@@ -1,4 +1,4 @@
-# Quick Math: design
+# SubTeXt: design
 
 Type `%% plain-language or sloppy math %%` and the text turns into rendered LaTeX math. Zotero is the first host app. Later hosts reuse `core/`.
 
@@ -6,7 +6,7 @@ Type `%% plain-language or sloppy math %%` and the text turns into rendered LaTe
 
 ```
 core/                 platform-agnostic, pure, no I/O, ES module
-  quickmath.mjs
+  subtext.mjs
   test/               node --test
   evals/              live prompt eval (spends real tokens, run by hand)
 zotero/               Zotero 7+ bootstrapped plugin
@@ -16,7 +16,7 @@ zotero/               Zotero 7+ bootstrapped plugin
   dev/live/           headless Zotero harness, adapted from ../split-view/dev/live
 ```
 
-## Core data shape (`core/quickmath.mjs`)
+## Core data shape (`core/subtext.mjs`)
 
 Pure functions. Each host owns its own I/O.
 
@@ -64,11 +64,11 @@ Facts behind the backends:
 
 | Setting | Pref | Default |
 | --- | --- | --- |
-| Backend | `extensions.quickmath.backend` | `claude-code` |
-| Model | `extensions.quickmath.model` | `claude-haiku-5-5` |
-| API key | Firefox login manager, origin `chrome://quickmath` | none |
-| Claude CLI path | `extensions.quickmath.claudePath` | empty, meaning autodetect |
-| Delimiter | `extensions.quickmath.delimiter` | `%%` |
+| Backend | `extensions.subtext.backend` | `claude-code` |
+| Model | `extensions.subtext.model` | `claude-haiku-5-5` |
+| API key | Firefox login manager, origin `chrome://subtext` | none |
+| Claude CLI path | `extensions.subtext.claudePath` | empty, meaning autodetect |
+| Delimiter | `extensions.subtext.delimiter` | `%%` |
 
 The API key lives in the login manager rather than `prefs.js`, so it is not written in plain text to the profile.
 
@@ -92,7 +92,7 @@ detectClaudePath() -> Promise<string>             // ~/.local/bin, /opt/homebrew
 runClaude(input, { model, claudePath }) -> Promise<Result>   // spawn with BACKENDS['claude-code'].buildArgs, stdin, 60s timeout, parseOutput
 ```
 
-`core/quickmath.mjs` stays pure. The Anthropic request always sends `anthropic-dangerous-direct-browser-access: true`, because the API rejects requests that carry a browser `Origin` header without it. A Chrome extension service worker sends `Origin: chrome-extension://…`.
+`core/subtext.mjs` stays pure. The Anthropic request always sends `anthropic-dangerous-direct-browser-access: true`, because the API rejects requests that carry a browser `Origin` header without it. A Chrome extension service worker sends `Origin: chrome-extension://…`.
 
 The CM6 editors in both hosts share one behavior. A StateField holds the pending conversions as ranges and maps them through every transaction, so the replacement lands on the right text even if the user kept typing. A decoration marks each pending range. When a conversion finishes, the host replaces the mapped range in one transaction. If the range was deleted or edited inside in the meantime, the result is dropped, because writing it would overwrite the user's edit. The replacement carries `isolateHistory.of('full')`, so Cmd+Z undoes only the conversion and never the typing around it.
 
@@ -108,9 +108,9 @@ Manifest V3. Works in Chrome and Brave. Extension ID `aaconkaemhjabkkimpelnggapg
 - On failure, a note with the error appears under the trigger for 6 seconds. It is a positioned element in `view.scrollDOM`, not a widget, so the text does not move. It picks its light or dark colors from the luminance of the editor's text color, since Overleaf's themes may not set `EditorView.darkTheme`.
 - MAIN-world scripts cannot use `chrome.runtime`, so `bridge.js` (isolated world) relays requests between the page and the service worker with `window.postMessage`, checking `event.source === window` and a message tag. Every message is `{ tag, id, method, params }` with a `{ tag, id, result }` reply. `background.js` dispatches `method` through a `METHODS` table (`convert`, `settings`) and `convert` through `TRANSPORTS` keyed by backend id. The bridge answers a `settings` request again on every `chrome.storage` change, so a new delimiter applies without a reload.
 - `settings.js` `loadSettings()` is the one place settings are read from `chrome.storage.local` and validated. The page only ever receives the delimiter, never the API key.
-- `background.js` is a module service worker that imports core. `anthropic` uses `fetch` with `host_permissions` for `https://api.anthropic.com/*`. `claude-code` uses `chrome.runtime.sendNativeMessage('com.aidenking.quickmath', …)`.
+- `background.js` is a module service worker that imports core. `anthropic` uses `fetch` with `host_permissions` for `https://api.anthropic.com/*`. `claude-code` uses `chrome.runtime.sendNativeMessage('com.aidenking.subtext', …)`.
 - `native-host/` is a Node native messaging host that calls `runClaude`. `install.sh` writes the host manifest for Chrome (`~/Library/Application Support/Google/Chrome/NativeMessagingHosts`), Brave (`~/Library/Application Support/BraveSoftware/Brave-Browser/NativeMessagingHosts`), or `<dir>/NativeMessagingHosts` for `--user-data-dir <dir>`. Chromium started with `--user-data-dir` looks for user-level hosts there (confirmed live with Playwright's Chrome for Testing 156: the extension reports the host missing until that file exists). The manifest's `allowed_origins` names the ID derived from the manifest `key`.
-- `install.sh` copies `host.mjs` and the core files it imports into `NativeMessagingHosts/com.aidenking.quickmath/` with a wrapper that names `node` by absolute path, because browsers launch hosts without the shell PATH. The host does not run from the checkout: launched from a checkout under `~/Documents`, the wrapper failed with `Operation not permitted`, which points to macOS privacy protection applied to the browser. Rerun `install.sh` after updating the host. Started with only `HOME` set, the claude CLI reports `Not logged in`; with `USER`, `LOGNAME`, `TMPDIR`, and `SHELL` also set, as macOS sets them for apps, it finds the login.
+- `install.sh` copies `host.mjs` and the core files it imports into `NativeMessagingHosts/com.aidenking.subtext/` with a wrapper that names `node` by absolute path, because browsers launch hosts without the shell PATH. The host does not run from the checkout: launched from a checkout under `~/Documents`, the wrapper failed with `Operation not permitted`, which points to macOS privacy protection applied to the browser. Rerun `install.sh` after updating the host. Started with only `HOME` set, the claude CLI reports `Not logged in`; with `USER`, `LOGNAME`, `TMPDIR`, and `SHELL` also set, as macOS sets them for apps, it finds the login.
 - `options.html` sets the backend, model, API key (`chrome.storage.local`), Claude CLI path, and delimiter (default `%%`). Each field saves on change.
 - Output uses `FORMATS.latex`.
 

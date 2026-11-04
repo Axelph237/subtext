@@ -1,23 +1,23 @@
 'use strict';
 
 // Pane scripts run in a sandbox, but the pane's onload attribute resolves names on the window.
-window.QuickMathPane = {
-  PREF: 'extensions.quickmath.',
+window.SubTeXtPane = {
+  PREF: 'extensions.subtext.',
   OTHER: '__other__',
 
   init() {
-    const { core } = Zotero.QuickMath;
+    const { core } = Zotero.SubTeXt;
     this.$ = (id) => document.getElementById(id);
     this.initBackend(core);
     this.initModel(core);
     this.initApiKey();
     this.initClaudePath();
     this.initDelimiter(core);
-    this.$('quickmath-test').addEventListener('command', () => this.test());
+    this.$('subtext-test').addEventListener('command', () => this.test());
   },
 
   initBackend({ BACKENDS, DEFAULT_BACKEND }) {
-    const group = this.$('quickmath-backend');
+    const group = this.$('subtext-backend');
     for (const [id, backend] of Object.entries(BACKENDS)) {
       const radio = document.createXULElement('radio');
       radio.setAttribute('value', id);
@@ -34,12 +34,12 @@ window.QuickMathPane = {
   },
 
   showBackendSettings(backend) {
-    for (const box of document.querySelectorAll('#quickmath-pane [data-backend]')) box.hidden = box.dataset.backend !== backend;
+    for (const box of document.querySelectorAll('#subtext-pane [data-backend]')) box.hidden = box.dataset.backend !== backend;
   },
 
   initModel({ MODELS, DEFAULT_MODEL }) {
-    const list = this.$('quickmath-model');
-    const custom = this.$('quickmath-model-custom');
+    const list = this.$('subtext-model');
+    const custom = this.$('subtext-model-custom');
     for (const { id, label } of [...MODELS, { id: this.OTHER, label: 'Other model id' }]) {
       list.appendItem(label, id);
     }
@@ -60,21 +60,21 @@ window.QuickMathPane = {
   },
 
   initApiKey() {
-    const input = this.$('quickmath-api-key');
-    input.value = Zotero.QuickMath.getApiKey();
-    input.addEventListener('change', () => Zotero.QuickMath.setApiKey(input.value.trim()));
+    const input = this.$('subtext-api-key');
+    input.value = Zotero.SubTeXt.getApiKey();
+    input.addEventListener('change', () => Zotero.SubTeXt.setApiKey(input.value.trim()));
   },
 
   async initClaudePath() {
-    const detected = await Zotero.QuickMath.detectClaudePath();
-    this.$('quickmath-claude-path').placeholder = detected || 'claude not found; enter its full path';
+    const detected = await Zotero.SubTeXt.detectClaudePath();
+    this.$('subtext-claude-path').placeholder = detected || 'claude not found; enter its full path';
   },
 
   initDelimiter({ DEFAULT_DELIMITER }) {
-    const input = this.$('quickmath-delimiter');
+    const input = this.$('subtext-delimiter');
     const hint = () => {
       const d = input.value.trim() || DEFAULT_DELIMITER;
-      this.$('quickmath-delimiter-hint').textContent = `Type ${d} x squared ${d} in a note to convert it.`;
+      this.$('subtext-delimiter-hint').textContent = `Type ${d} x squared ${d} in a note to convert it.`;
     };
     input.placeholder = DEFAULT_DELIMITER;
     input.addEventListener('input', hint);
@@ -83,12 +83,12 @@ window.QuickMathPane = {
   },
 
   async test() {
-    const button = this.$('quickmath-test');
-    const output = this.$('quickmath-test-result');
-    await Zotero.QuickMath.setApiKey(this.$('quickmath-api-key').value.trim());
+    const button = this.$('subtext-test');
+    const output = this.$('subtext-test-result');
+    await Zotero.SubTeXt.setApiKey(this.$('subtext-api-key').value.trim());
     button.disabled = true;
     output.textContent = 'Converting...';
-    const result = await Zotero.QuickMath.convert(this.$('quickmath-test-input').value);
+    const result = await Zotero.SubTeXt.convert(this.$('subtext-test-input').value);
     output.textContent = result.ok ? result.latex : `Error: ${result.error}`;
     output.style.color = result.ok ? '' : 'var(--accent-red, #d70022)';
     button.disabled = false;

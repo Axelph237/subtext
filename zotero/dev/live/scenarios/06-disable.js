@@ -1,6 +1,6 @@
 const { AddonManager } = ChromeUtils.importESModule('resource://gre/modules/AddonManager.sys.mjs');
 resetPrefs();
-const addon = await AddonManager.getAddonByID('quick-math@aidenking');
+const addon = await AddonManager.getAddonByID('subtext@aidenking');
 const { view, iwin } = await openNote('<p>Disable:</p>');
 const first = ' %% x squared %%';
 await typeText(iwin, first);
@@ -8,7 +8,7 @@ check(await until(() => pills(iwin) === 1, 2000), 'pill shows for the in-flight 
 await addon.disable();
 await wait(300);
 check(pills(iwin) === 0, 'disabling removes the pending pill');
-check(!Zotero.QuickMath, 'Zotero.QuickMath is removed');
+check(!Zotero.SubTeXt, 'Zotero.SubTeXt is removed');
 await wait(6000);
 check(nodesOfType(view, 'math_inline').length === 0, 'the in-flight result is dropped after disable', docJSON(view));
 await typeText(iwin, ' %% y squared %%');
@@ -20,7 +20,7 @@ check(docText(view) === 'Disable: %% x squared %% %% y squared %%', 'text is lef
 const off = await snap('06-disabled');
 await addon.enable();
 await wait(1500);
-check(!!Zotero.QuickMath, 're-enable restores Zotero.QuickMath');
+check(!!Zotero.SubTeXt, 're-enable restores Zotero.SubTeXt');
 await typeText(iwin, ' %% z squared %%');
 check(await until(() => nodesOfType(view, 'math_inline').length === 1, 30000), 're-enabled plugin converts the next trigger', docJSON(view));
 return { fails, off, on: await snap('06-reenabled') };

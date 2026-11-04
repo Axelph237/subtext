@@ -1,5 +1,5 @@
 var timer;
-const CMD_DIR = Services.env.get("QM_CMD_DIR");
+const CMD_DIR = Services.env.get("STX_CMD_DIR");
 function startup() {
   if (!CMD_DIR) return;
   timer = Components.classes["@mozilla.org/timer;1"].createInstance(Components.interfaces.nsITimer);

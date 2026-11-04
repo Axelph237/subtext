@@ -1,8 +1,8 @@
 import { Notice, Plugin, requestUrl } from 'obsidian';
-import { BACKENDS } from '../../core/quickmath.mjs';
+import { BACKENDS } from '../../core/subtext.mjs';
 import { runClaude } from '../../core/node/claude-cli.mjs';
-import { quickMathExtension } from './editor.js';
-import { QuickMathSettingTab, parseSettings } from './settings.js';
+import { subtextExtension } from './editor.js';
+import { SubTeXtSettingTab, parseSettings } from './settings.js';
 
 const TRANSPORTS = {
   'claude-code'(backend, settings, input) {
@@ -11,7 +11,7 @@ const TRANSPORTS = {
 
   async anthropic(backend, settings, input, app) {
     const apiKey = settings.apiKeySecret && app.secretStorage.getSecret(settings.apiKeySecret);
-    if (!apiKey) return { ok: false, error: 'No Anthropic API key is set. Choose one in Settings > Quick Math.' };
+    if (!apiKey) return { ok: false, error: 'No Anthropic API key is set. Choose one in Settings > SubTeXt.' };
     const { url, init } = backend.buildRequest({ model: settings.model, apiKey }, input);
     let response;
     try {
@@ -29,14 +29,14 @@ const TRANSPORTS = {
   },
 };
 
-export default class QuickMathPlugin extends Plugin {
+export default class SubTeXtPlugin extends Plugin {
   async onload() {
     this.settings = parseSettings(await this.loadData());
-    this.addSettingTab(new QuickMathSettingTab(this.app, this));
-    this.registerEditorExtension(quickMathExtension({
+    this.addSettingTab(new SubTeXtSettingTab(this.app, this));
+    this.registerEditorExtension(subtextExtension({
       delimiter: () => this.settings.delimiter,
       convert: (input) => this.convert(input),
-      notify: (error) => new Notice(`Quick Math could not convert: ${error}`, 8000),
+      notify: (error) => new Notice(`SubTeXt could not convert: ${error}`, 8000),
     }));
   }
 
@@ -50,7 +50,7 @@ export default class QuickMathPlugin extends Plugin {
     try {
       return await TRANSPORTS[settings.backend](BACKENDS[settings.backend], settings, input, this.app);
     } catch (e) {
-      console.error('Quick Math:', e);
+      console.error('SubTeXt:', e);
       return { ok: false, error: String(e.message || e) };
     }
   }

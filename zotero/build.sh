@@ -2,6 +2,6 @@
 set -eu
 cd "$(dirname "$0")"
 mkdir -p build
-rm -f build/quick-math.xpi
-zip -qr -X build/quick-math.xpi manifest.json bootstrap.js prefs.js prefs.xhtml src core/quickmath.mjs
-echo "built build/quick-math.xpi"
+rm -f build/subtext.xpi
+zip -qr -X build/subtext.xpi manifest.json bootstrap.js prefs.js prefs.xhtml src core/subtext.mjs
+echo "built build/subtext.xpi"
