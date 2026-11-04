@@ -66,36 +66,6 @@ function latexResult(text) {
 const REFUSAL = 'The model declined to convert this input.';
 
 export const BACKENDS = {
-  anthropic: {
-    label: 'Anthropic API key',
-    buildRequest({ model, apiKey }, input) {
-      return {
-        url: 'https://api.anthropic.com/v1/messages',
-        init: {
-          method: 'POST',
-          headers: {
-            'x-api-key': apiKey,
-            'anthropic-version': '2026-10-21',
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            model,
-            max_tokens: 1024,
-            system: SYSTEM_PROMPT,
-            messages: [{ role: 'user', content: input }],
-            output_config: { effort: 'low' },
-            thinking: { type: 'disabled' },
-          }),
-        },
-      };
-    },
-    parseResponse(json) {
-      if (json?.type === 'error') return { ok: false, error: json.error?.message || 'The Anthropic API returned an error.' };
-      if (json?.stop_reason === 'refusal') return { ok: false, error: REFUSAL };
-      if (!Array.isArray(json?.content)) return { ok: false, error: 'The Anthropic API returned an unexpected response.' };
-      return latexResult(json.content.filter((block) => block.type === 'text').map((block) => block.text).join(''));
-    },
-  },
   'claude-code': {
     label: 'Claude Code login',
     buildArgs({ model }) {
@@ -125,6 +95,36 @@ export const BACKENDS = {
       if (json?.stop_reason === 'refusal') return { ok: false, error: REFUSAL };
       if (typeof json?.result !== 'string') return { ok: false, error: 'The Claude CLI returned no result.' };
       return latexResult(json.result);
+    },
+  },
+  anthropic: {
+    label: 'Anthropic API key',
+    buildRequest({ model, apiKey }, input) {
+      return {
+        url: 'https://api.anthropic.com/v1/messages',
+        init: {
+          method: 'POST',
+          headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2026-10-21',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 1024,
+            system: SYSTEM_PROMPT,
+            messages: [{ role: 'user', content: input }],
+            output_config: { effort: 'low' },
+            thinking: { type: 'disabled' },
+          }),
+        },
+      };
+    },
+    parseResponse(json) {
+      if (json?.type === 'error') return { ok: false, error: json.error?.message || 'The Anthropic API returned an error.' };
+      if (json?.stop_reason === 'refusal') return { ok: false, error: REFUSAL };
+      if (!Array.isArray(json?.content)) return { ok: false, error: 'The Anthropic API returned an unexpected response.' };
+      return latexResult(json.content.filter((block) => block.type === 'text').map((block) => block.text).join(''));
     },
   },
 };

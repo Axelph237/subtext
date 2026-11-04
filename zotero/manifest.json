@@ -1,0 +1,15 @@
+{
+  "manifest_version": 2,
+  "name": "Quick Math",
+  "version": "0.1.0",
+  "description": "Type %% plain-language math %% in a note and it turns into rendered LaTeX.",
+  "author": "Aiden King",
+  "applications": {
+    "zotero": {
+      "id": "quick-math@aidenking",
+      "update_url": "https://example.invalid/quick-math/updates.json",
+      "strict_min_version": "7.0",
+      "strict_max_version": "10.*"
+    }
+  }
+}

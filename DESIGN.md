@@ -48,10 +48,12 @@ Facts behind the backends:
 
 - The note editor is an iframe. Its window has `_currentEditorInstance`, whose `_editorCore.view` is the ProseMirror `EditorView`. Chrome code reaches it through `wrappedJSObject`.
 - The schema has `math_inline` (inline, atom, `content: "text*"`) and `math_display` (block). They serialize to `$…$` and `$$…$$` and render with KaTeX.
+- The note-editor iframe has the `resource://zotero` principal, not the system principal, so chrome code sees it through Xrays. Walk nodes with `childCount` and `child(i)` rather than passing chrome callbacks into content.
+- Preference pane scripts run in a sandbox whose prototype is the window. The pane's `onload` attribute resolves names on the window, so the pane object is set on `window`.
 
 ## Zotero behavior
 
-1. A capture-phase `input` listener on each main window sees typing inside note-editor iframes. If events do not propagate there, attach per iframe instead. The live harness decides.
+1. A capture-phase `input` listener on each main window sees typing inside note-editor iframes (confirmed live on 10.0.7). The listener runs before ProseMirror reads the DOM change into its state, so it waits one task before reading the selection.
 2. On input, read the text of the cursor's textblock up to the cursor and call `findTrigger`. No trigger, nothing happens.
 3. Show a small pending pill anchored at the trigger (`view.coordsAtPos`). Call the configured backend.
 4. On success, find the exact trigger text in the current doc, nearest to where it was (the user may have kept typing), and replace it with a `math_inline` node. If the trigger was the whole paragraph, replace the paragraph with `math_display`. One transaction, so Cmd+Z restores the raw text.
