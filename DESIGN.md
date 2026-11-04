@@ -71,3 +71,45 @@ Facts behind the backends:
 | Delimiter | `extensions.quickmath.delimiter` | `%%` |
 
 The API key lives in the login manager rather than `prefs.js`, so it is not written in plain text to the profile.
+
+## Hosts that insert text
+
+Overleaf and Obsidian edit source text, so the converted math is inserted as text in the host's own syntax. Core owns the syntax table:
+
+```js
+FORMATS = {
+  latex:    { inline: (l) => `$${l}$`, display: (l) => `\\[\n${l}\n\\]` },   // Overleaf
+  markdown: { inline: (l) => `$${l}$`, display: (l) => `$$\n${l}\n$$` },    // Obsidian
+}
+```
+
+A trigger that is the whole line (ignoring surrounding whitespace) uses `display`; otherwise `inline`.
+
+Two Node hosts (the Obsidian plugin and the Chrome native messaging host) run the claude CLI, so core gains one Node-only module, `core/node/claude-cli.mjs`:
+
+```js
+detectClaudePath() -> Promise<string>             // ~/.local/bin, /opt/homebrew/bin, /usr/local/bin, then `$SHELL -lc 'command -v claude'`
+runClaude(input, { model, claudePath }) -> Promise<Result>   // spawn with BACKENDS['claude-code'].buildArgs, stdin, 60s timeout, parseOutput
+```
+
+`core/quickmath.mjs` stays pure. The Anthropic request always sends `anthropic-dangerous-direct-browser-access: true`, because the API rejects requests that carry a browser `Origin` header without it. A Chrome extension service worker sends `Origin: chrome-extension://…`.
+
+The CM6 editors in both hosts share one behavior. A StateField holds the pending conversions as ranges and maps them through every transaction, so the replacement lands on the right text even if the user kept typing. A decoration marks each pending range. When a conversion finishes, the host replaces the mapped range in one transaction. If the range was deleted in the meantime, the result is dropped.
+
+## Chrome extension (`chrome/`), Overleaf only
+
+Manifest V3. Works in Chrome and Brave.
+
+- `overleaf.js` runs in the page's MAIN world at `document_start` on `https://www.overleaf.com/project/*`. It listens for Overleaf's `UNSTABLE_editor:extensions` event and pushes a CM6 extension built only from `event.detail.CodeMirror` (the host's own classes; bundling a second CodeMirror breaks `instanceof`). Overleaf calls the hook unsupported and subject to change, so the plugin fails quietly and logs once if the hook never fires.
+- MAIN-world scripts cannot use `chrome.runtime`, so `bridge.js` (isolated world) relays requests between the page and the service worker with `window.postMessage`, checking `event.source === window` and a message tag.
+- `background.js` is a module service worker that imports core. `anthropic` uses `fetch` with `host_permissions` for `https://api.anthropic.com/*`. `claude-code` uses `chrome.runtime.sendNativeMessage('com.aidenking.quickmath', …)`.
+- `native-host/` is a Node native messaging host that calls `runClaude`. `install.sh` writes the host manifest for Chrome, Brave, and (for the harness) a given user data dir, plus a wrapper script with the absolute path of `node`, because browsers launch hosts without the shell PATH. The manifest `key` pins the extension ID that the host manifest's `allowed_origins` names.
+- `options.html` sets the backend, model, API key (`chrome.storage.local`), and delimiter (default `%%`).
+- Output uses `FORMATS.latex`.
+
+## Obsidian plugin (`obsidian/`)
+
+- Plain JS bundled with esbuild into `main.js` (core is ESM, Obsidian loads CommonJS). `obsidian`, `@codemirror/*`, and Node builtins are external.
+- The CM6 extension is registered with `registerEditorExtension`. The same StateField design as Overleaf applies.
+- `claude-code` uses `runClaude` (desktop only). `anthropic` uses Obsidian's `requestUrl`, which bypasses CORS. The API key lives in `app.secretStorage` (Obsidian 1.11.4+, so `minAppVersion: "1.11.4"`). `data.json` holds only the secret id.
+- Default delimiter `;;`, because `%%` is Obsidian comment syntax. Output uses `FORMATS.markdown`.
